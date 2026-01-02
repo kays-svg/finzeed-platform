@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finzeed – SME Working Capital & Supplier Marketplace</title>
+
+  <style>
+    :root {
+      --primary: #05690f;
+      --accent: #00a5b5;
+      --bg: #f3f8f4;
+      --text-main: #0e1a11;
+      --text-muted: #4b5c51;
+      --card-radius: 18px;
+      --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text-main);
+    }
+
+    /* NAVBAR + TABS */
+    .navbar {
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+
+    .logo-icon {
+      background: var(--primary);
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.1rem;
+      box-shadow: 0 6px 14px rgba(5, 105, 15, 0.4);
+    }
+
+    .logo-text {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 1.6rem;
+      font-size: 0.95rem;
+      color: #3a453f;
+    }
+
+    .tabs span {
+      padding-bottom: 4px;
+      cursor: pointer;
+    }
+
+    .tabs span.active {
+      border-bottom: 2px solid var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .nav-actions button {
+      padding: 0.55rem 1.2rem;
+      border-radius: 30px;
+      border: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-outline {
+      background: white;
+      border: 1px solid #cfd8d2;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 6px 14px rgba(5, 105, 15, 0.4);
+    }
+
+    /* PAGE SECTIONS (TABS) */
+    .section {
+      display: none;
+      padding: 3rem 2.4rem;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    /* HOME / HERO */
+    .hero {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-left {
+      flex: 1.2 1 260px;
+      min-width: 260px;
+    }
+
+    .badge {
+      background: #e8f5ea;
+      padding: 0.4rem 1rem;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .hero-title {
+      font-size: 2.6rem;
+      font-weight: 700;
+      margin-top: 1rem;
+      color: var(--text-main);
+    }
+
+    .hero-title span {
+      color: var(--primary);
+    }
+
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+      line-height: 1.55;
+      max-width: 38rem;
+    }
+
+    .hero-buttons {
+      margin-top: 1.6rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .big-btn {
+      padding: 1rem 1.6rem;
+      font-size: 1rem;
+      border-radius: 40px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .big-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 8px 20px rgba(5, 105, 15, 0.35);
+    }
+
+    .big-outline {
+      background: white;
+      border: 1px solid #d6e3da;
+    }
+
+    .hero-notes {
+      margin-top: 1.2rem;
+      font-size: 0.92rem;
+      color: #506157;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .snapshot-card {
+      flex: 1 1 260px;
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid #e4ebe6;
+      min-width: 260px;
+    }
+
+    .snapshot-title {
+      font-size: 1rem;
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .snapshot-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 0.4rem;
+    }
+
+    .snapshot-subtext {
+      font-size: 0.9rem;
+      color: #4c5f52;
+      border-bottom: 1px solid #e5ece8;
+      padding-bottom: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .snapshot-rows {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .row-label {
+      font-size: 0.85rem;
+      color: #67756d;
+    }
+
+    .row-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #0f2216;
+    }
+
+    .tags {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .tag {
+      background: #eef6f0;
+      padding: 0.35rem 0.8rem;
+      border-radius: 30px;
+      font-size: 0.78rem;
+      color: #0e331c;
+      font-weight: 500;
+    }
+
+    /* SECTION TITLES */
+    .section h2 {
+      font-size: 1.7rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .section p.lead {
+      font-size: 0.98rem;
+      color: var(--text-muted);
+      max-width: 42rem;
+      margin-bottom: 1.4rem;
+    }
+
+    /* HOW IT WORKS */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .step-card {
+      background: #fff;
+      border-radius: var(--card-radius);
+      padding: 1rem 1.1rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid #e0ebe4;
+      font-size: 0.9rem;
+    }
+
+    .step-number {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .step-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .step-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* WHY FINZEED */
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .value-card {
+      background: #fff;
+      border-radius: var(--card-radius);
+      padding: 1.05rem 1.05rem 1.15rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid #e0ebe4;
+      font-size: 0.9rem;
+    }
+
+    .value-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(5, 105, 15, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.65rem;
+      font-size: 1.15rem;
+    }
+
+    .value-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .value-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* SUPPLIERS MARKETPLACE */
+    .suppliers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .supplier-card {
+      background: #ffffff;
+      border-radius: var(--card-radius);
+      padding: 1rem 1rem 1.1rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(15, 35, 52, 0.04);
+      font-size: 0.86rem;
+    }
+
+    .supplier-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.7rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .supplier-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .supplier-category {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .supplier-tag {
+      font-size: 0.72rem;
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
+      background: #e7f6ea;
+      color: var(--primary);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .supplier-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .supplier-cta {
+      border-radius: 999px;
+      border: none;
+      padding: 0.45rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), #089c20);
+      color: #fff;
+      box-shadow: 0 6px 14px rgba(5, 105, 15, 0.4);
+    }
+
+    /* REQUEST CREDIT – FORM */
+    .request-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 2rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .request-form-card {
+      background: #fff;
+      border-radius: var(--card-radius);
+      padding: 1.5rem 1.6rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid #e0ebe4;
+    }
+
+    .request-form-card h3 {
+      margin-top: 0;
+      margin-bottom: 0.8rem;
+    }
+
+    .request-form-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0;
+      margin-bottom: 1rem;
+    }
+
+    .form-grid-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.9rem;
+    }
+
+    .form-group {
+      margin-bottom: 0.9rem;
+      font-size: 0.9rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.85rem;
+      color: #425349;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid #d5e3d8;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.9rem;
+      outline: none;
+      font-family: inherit;
+      background: #f9fbfa;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .upload-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.8rem;
+      margin-bottom: 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .upload-box {
+      border-radius: 12px;
+      border: 2px dashed #cbd8cf;
+      padding: 0.7rem 0.8rem;
+      background: #f5faf6;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .upload-box:hover {
+      border-color: var(--primary);
+      background: #e8f5ea;
+    }
+
+    .upload-box.has-file {
+      border-color: var(--primary);
+      background: #e8f5ea;
+    }
+
+    .upload-box p {
+      margin: 0 0 0.3rem;
+      font-size: 0.86rem;
+    }
+
+    .upload-box small {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .upload-box input[type="file"] {
+      display: none;
+    }
+
+    .file-name {
+      font-size: 0.75rem;
+      color: var(--primary);
+      margin-top: 0.3rem;
+      font-weight: 600;
+    }
+
+    .submit-row {
+      margin-top: 1.1rem;
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .helper-text {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .request-side-card {
+      background: #e8f5ea;
+      border-radius: var(--card-radius);
+      padding: 1.4rem 1.5rem;
+      border: 1px solid #c5e0cf;
+      font-size: 0.9rem;
+      color: #21402b;
+    }
+
+    .request-side-card h3 {
+      margin-top: 0;
+      margin-bottom: 0.7rem;
+    }
+
+    .request-side-card ul {
+      padding-left: 1.1rem;
+      margin: 0.4rem 0 0.8rem;
+      font-size: 0.88rem;
+    }
+
+    .request-side-card li + li {
+      margin-top: 0.25rem;
+    }
+
+    /* Loading Spinner */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .loading-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Results Modal */
+    .results-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .results-modal.active {
+      display: flex;
+    }
+
+    .results-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .results-header h2 {
+      margin: 0;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .decision-approved {
+      background: #e8f5ea;
+      color: var(--primary);
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .decision-rejected {
+      background: #fee;
+      color: #c00;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .result-item {
+      padding: 1rem;
+      background: #f9fbfa;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .result-item h4 {
+      margin: 0 0 0.5rem;
+      color: var(--primary);
+    }
+
+    .result-item p {
+      margin: 0;
+      color: var(--text-main);
+    }
+
+    /* ERROR MESSAGE */
+    .error-message {
+      background: #fee;
+      color: #c00;
+      padding: 1rem;
+      border-radius: 12px;
+      margin: 1rem 0;
+      border: 1px solid #fcc;
+    }
+
+    /* DEBUG PANEL */
+    .debug-panel {
+      position: fixed;
+      bottom: 100px;
+      left: 20px;
+      background: white;
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      padding: 1rem;
+      max-width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 1000;
+      font-size: 0.8rem;
+      display: none;
+    }
+
+    .debug-panel.active {
+      display: block;
+    }
+
+    .debug-panel h4 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+
+    .debug-panel pre {
+      background: #f5f5f5;
+      padding: 0.5rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.75rem;
+    }
+
+    /* CHAT WIDGET */
+    .chat-widget {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+
+    .chat-button {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #089c20);
+      color: white;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(5, 105, 15, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .chat-button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 10px 25px rgba(5, 105, 15, 0.5);
+    }
+
+    .chat-window {
+      display: none;
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      width: 380px;
+      height: 550px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1001;
+    }
+
+    .chat-window.active {
+      display: flex;
+    }
+
+    .chat-header {
+      background: linear-gradient(135deg, var(--primary), #089c20);
+      color: white;
+      padding: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-header h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .chat-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+
+    .chat-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background: #f9fafb;
+    }
+
+    .chat-message {
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-message.user {
+      align-items: flex-end;
+    }
+
+    .chat-message.bot {
+      align-items: flex-start;
+    }
+
+    .message-bubble {
+      max-width: 75%;
+      padding: 0.75rem 1rem;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .chat-message.user .message-bubble {
+      background: var(--primary);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-message.bot .message-bubble {
+      background: white;
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .message-time {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    .chat-input-area {
+      padding: 1rem;
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .chat-input {
+      flex: 1;
+      border: 1px solid #d1d5db;
+      border-radius: 20px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .chat-input:focus {
+      border-color: var(--primary);
+    }
+
+    .chat-send {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+    }
+
+    .chat-send:hover {
+      background: #047a0d;
+      transform: scale(1.05);
+    }
+
+    .chat-send:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      transform: scale(1);
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 0.75rem 1rem;
+      background: white;
+      border-radius: 16px;
+      width: fit-content;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: typing 1.4s infinite;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+      0%, 60%, 100% {
+        opacity: 0.3;
+        transform: translateY(0);
+      }
+      30% {
+        opacity: 1;
+        transform: translateY(-8px);
+      }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 960px) {
+      .hero {
+        flex-direction: column;
+        padding-top: 0;
+      }
+      .request-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .steps-grid,
+      .value-grid,
+      .suppliers-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .navbar {
+        flex-direction: column;
+        gap: 0.8rem;
+        padding: 1rem 1.2rem;
+        align-items: flex-start;
+      }
+      .tabs {
+        flex-wrap: wrap;
+        gap: 0.9rem;
+      }
+      .section {
+        padding: 2rem 1.4rem;
+      }
+      .hero-title {
+        font-size: 2rem;
+      }
+      .hero-sub {
+        font-size: 0.95rem;
+      }
+      .steps-grid,
+      .value-grid,
+      .suppliers-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .upload-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .chat-window {
+        width: calc(100% - 20px);
+        right: 10px;
+        left: 10px;
+        bottom: 80px;
+        height: calc(100vh - 100px);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .big-btn {
+        width: 100%;
+      }
+    }
+
+    /* BLOB UPLOAD STATES */
+    .upload-box.uploading {
+      border-color: var(--accent);
+      background: #e3f5f7;
+      position: relative;
+      pointer-events: none;
+    }
+
+    .upload-box.uploading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: 1rem;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .upload-box.upload-error {
+      border-color: #c00;
+      background: #fee;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Debug Panel (Toggle with Ctrl+D) -->
+<div class="debug-panel" id="debugPanel">
+  <h4>Debug Console</h4>
+  <div id="debugContent">
+    <p>Press Ctrl+D to toggle this panel</p>
+    <p>Logs will appear here...</p>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-content">
+    <div class="spinner"></div>
+    <h3>Analyzing your documents...</h3>
+    <p>Our AI is processing your information. This may take a moment.</p>
+  </div>
+</div>
+
+<!-- Results Modal -->
+<div class="results-modal" id="resultsModal">
+  <div class="results-content">
+    <div class="results-header">
+      <h2>Credit Assessment Results</h2>
+      <button class="close-btn" onclick="closeResults()">×</button>
+    </div>
+    <div id="resultsBody"></div>
+  </div>
+</div>
+
+<!-- NAVBAR + TABS -->
+<div class="navbar">
+  <div class="logo-section">
+    <div class="logo-icon">FZ</div>
+    <div class="logo-text">Finzeed</div>
+  </div>
+
+  <div class="tabs">
+    <span class="active" data-tab="home" onclick="openTab('home')">Home</span>
+    <span data-tab="how" onclick="openTab('how')">How it works</span>
+    <span data-tab="why" onclick="openTab('why')">Why Finzeed</span>
+    <span data-tab="suppliers" onclick="openTab('suppliers')">Suppliers</span>
+    <span data-tab="request" onclick="openTab('request')">Request credit</span>
+  </div>
+
+  <div class="nav-actions">
+    <button class="btn-outline">Sign in</button>
+    <button class="btn-primary" onclick="openTab('request')">Request credit</button>
+  </div>
+</div>
+
+<!-- HOME TAB -->
+<section id="home" class="section active">
+  <div class="hero">
+    <div class="hero-left">
+      <div class="badge">• SME WORKING-CAPITAL FINANCING</div>
+
+      <div class="hero-title">
+        Flexible <span>credit lines</span> to pay your suppliers on time.
+      </div>
+
+      <div class="hero-sub">
+        Finzeed helps manufacturers, traders and distributors secure working capital by paying their suppliers directly,
+        while you repay in smart instalments aligned with your cash flow.
+      </div>
+
+      <div class="hero-buttons">
+        <button class="big-btn big-primary" onclick="openTab('request')">
+          Request credit in 5 minutes
+        </button>
+        <button class="big-btn big-outline">Book a live demo</button>
+      </div>
+
+      <div class="hero-notes">
+        <div>⚡ <strong>Fast approvals.</strong> Decisions based on real transaction behaviour.</div>
+        <div>🤝 <strong>Suppliers paid</strong> in full, on time</div>
+        <div>📊 <strong>Clear instalment plan</strong> from day one</div>
+      </div>
+    </div>
+
+    <div class="snapshot-card">
+      <div class="snapshot-title">• Live snapshot (demo)</div>
+      <div class="snapshot-value">EGP 16,000,000</div>
+      <div class="snapshot-subtext">Total products and materials purchased via Finzeed</div>
+
+      <div class="snapshot-rows">
+        <div>
+          <div class="row-label">Active customers</div>
+          <div class="row-value">15</div>
+        </div>
+        <div>
+          <div class="row-label">Number of suppliers</div>
+          <div class="row-value" style="color:#05690f;">12</div>
+        </div>
+      </div>
+
+      <div class="tags">
+        <div class="tag">Manufacturing</div>
+        <div class="tag">Trading</div>
+        <div class="tag">Distribution</div>
+        <div class="tag">Working capital</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS TAB -->
+<section id="how" class="section">
+  <h2>How Finzeed works</h2>
+  <p class="lead">From onboarding to first supplier payment in three simple steps.</p>
+
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-number">1</div>
+      <h3>Apply & share your data</h3>
+      <p>Provide company details and securely share your bank statements. Our engine analyses inflows, outflows and behaviour.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-number">2</div>
+      <h3>Get a tailored credit line</h3>
+      <p>We set a limit and tenor that match your size, margins and seasonality. You see all terms clearly before you accept.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-number">3</div>
+      <h3>Request supplier payments</h3>
+      <p>Submit invoices from approved suppliers. Finzeed pays them directly and you repay in monthly instalments.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WHY FINZEED TAB -->
+<section id="why" class="section">
+  <h2>Why SMEs choose Finzeed</h2>
+  <p class="lead">Designed around your supplier relationships and cash cycle, not long paperwork.</p>
+
+  <div class="value-grid">
+    <div class="value-card">
+      <div class="value-icon">⚡</div>
+      <h3>Fast, data-driven decisions</h3>
+      <p>Our AI engine reads your bank statements and transaction patterns to estimate a suitable credit limit within minutes.</p>
+    </div>
+    <div class="value-card">
+      <div class="value-icon">🧾</div>
+      <h3>Suppliers paid directly</h3>
+      <p>Finzeed pays your approved suppliers on your behalf. You focus on production, not chasing payment terms.</p>
+    </div>
+    <div class="value-card">
+      <div class="value-icon">📊</div>
+      <h3>Real-time credit dashboard</h3>
+      <p>Monitor your limits, upcoming cheques, past deals and payment performance from one simple dashboard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SUPPLIERS TAB -->
+<section id="suppliers" class="section">
+  <h2>Suppliers marketplace (demo)</h2>
+  <p class="lead">Browse a sample of verified suppliers. Real marketplace will show live suppliers integrated with Finzeed.</p>
+
+  <div class="suppliers-grid">
+    <div class="supplier-card">
+      <div class="supplier-header">
+        <div>
+          <div class="supplier-name">Nile Steel Trading Co.</div>
+          <div class="supplier-category">Steel & Metals · Cairo</div>
+        </div>
+        <div class="supplier-tag">Preferred</div>
+      </div>
+      <div class="supplier-meta">
+        Typical invoice size: EGP 150K – 500K · Payment terms: Cash / 30 days
+      </div>
+      <button class="supplier-cta" onclick="openTab('request')">
+        Request financing for this supplier
+      </button>
+    </div>
+
+    <div class="supplier-card">
+      <div class="supplier-header">
+        <div>
+          <div class="supplier-name">GreenPack Packaging</div>
+          <div class="supplier-category">Packaging · 10th of Ramadan</div>
+        </div>
+        <div class="supplier-tag">Fast approval</div>
+      </div>
+      <div class="supplier-meta">
+        Typical invoice size: EGP 80K – 250K · Payment terms: 15–45 days
+      </div>
+      <button class="supplier-cta" onclick="openTab('request')">
+        Request financing for this supplier
+      </button>
+    </div>
+
+    <div class="supplier-card">
+      <div class="supplier-header">
+        <div>
+          <div class="supplier-name">Delta Food Ingredients</div>
+          <div class="supplier-category">Food & FMCG · Delta</div>
+        </div>
+        <div class="supplier-tag">Pilot</div>
+      </div>
+      <div class="supplier-meta">
+        Typical invoice size: EGP 60K – 200K · Payment terms: Cash / 30 days
+      </div>
+      <button class="supplier-cta" onclick="openTab('request')">
+        Request financing for this supplier
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- REQUEST CREDIT TAB (CREDIT FORM) -->
+<section id="request" class="section">
+  <h2>Request your Finzeed credit line</h2>
+  <p class="lead">
+    Share your basic details and upload the required documents. Our AI will analyze your information and provide instant credit assessment.
+  </p>
+
+  <div class="request-layout">
+    <!-- LEFT: FORM -->
+    <div class="request-form-card">
+      <h3>Step 1 – Company & contact details</h3>
+      <p>Please fill in your information. Fields marked * are required.</p>
+
+      <form id="creditForm" onsubmit="handleSubmit(event)">
+        <div class="form-grid-two">
+          <div class="form-group">
+            <label for="firstname">First name *</label>
+            <input type="text" id="firstname" name="firstname" placeholder="Enter first name" required />
+          </div>
+          <div class="form-group">
+            <label for="lastname">Last name *</label>
+            <input type="text" id="lastname" name="lastname" placeholder="Enter last name" required />
+          </div>
+        </div>
+
+        <div class="form-grid-two">
+          <div class="form-group">
+            <label for="email">Email address *</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email" required />
+          </div>
+          <div class="form-group">
+            <label for="mobile">Mobile number *</label>
+            <input type="tel" id="mobile" name="mobile" placeholder="Enter your mobile number" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="company">Company name *</label>
+          <input type="text" id="company" name="company" placeholder="Enter your company name" required />
+        </div>
+
+        <div class="form-grid-two">
+          <div class="form-group">
+            <label for="industry">Industry *</label>
+            <select id="industry" name="industry" required>
+              <option value="">Select industry</option>
+              <option>Manufacturing</option>
+              <option>Trading</option>
+              <option>Distribution</option>
+              <option>Services</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="revenue">Annual revenue (EGP)</label>
+            <input type="number" id="revenue" name="revenue" placeholder="e.g. 10,000,000" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="purpose">What do you need the credit for?</label>
+          <textarea id="purpose" name="purpose" placeholder="e.g. Buying raw materials, importing inventory, supporting seasonal orders"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Upload documents *</label>
+
+          <div class="upload-row">
+            <div class="upload-box" onclick="document.getElementById('nationalId').click()">
+              <p>🆔 National ID</p>
+              <small>Upload clear copy of your ID.</small>
+              <div class="file-name" id="nationalIdName"></div>
+              <input type="file" id="nationalId" accept="image/*,.pdf" onchange="handleFileSelect(this, 'nationalIdName')" />
+            </div>
+            <div class="upload-box" onclick="document.getElementById('bankStatements').click()">
+              <p>🏦 Bank statements</p>
+              <small>Last 6–12 months in PDF format.</small>
+              <div class="file-name" id="bankStatementsName"></div>
+              <input type="file" id="bankStatements" accept=".pdf" onchange="handleFileSelect(this, 'bankStatementsName')" />
+            </div>
+          </div>
+
+          <div class="upload-row">
+            <div class="upload-box" onclick="document.getElementById('commercialReg').click()">
+              <p>📄 Commercial registration</p>
+              <small>Company legal docs.</small>
+              <div class="file-name" id="commercialRegName"></div>
+              <input type="file" id="commercialReg" accept="image/*,.pdf" onchange="handleFileSelect(this, 'commercialRegName')" />
+            </div>
+            <div class="upload-box" onclick="document.getElementById('taxCard').click()">
+              <p>💰 Tax card (if available)</p>
+              <small>Optional but recommended.</small>
+              <div class="file-name" id="taxCardName"></div>
+              <input type="file" id="taxCard" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxCardName')" />
+            </div>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="big-btn big-primary">
+            Submit credit request
+          </button>
+          <span class="helper-text">
+            Your data will be encrypted and processed securely via our AI engine.
+          </span>
+        </div>
+      </form>
+    </div>
+
+    <!-- RIGHT: INFO / BENEFITS -->
+    <div class="request-side-card">
+      <h3>What happens after you submit?</h3>
+      <ul>
+        <li>Our AI engine analyses your bank statements and cashflow behaviour.</li>
+        <li>A suitable credit limit and tenor are estimated based on your profile.</li>
+        <li>We contact you to confirm supplier details and complete KYC.</li>
+        <li>Once approved, you can start requesting supplier payments through Finzeed.</li>
+      </ul>
+
+      <h3>Why Finzeed?</h3>
+      <ul>
+        <li>Credit lines designed specifically for supplier payments.</li>
+        <li>Suppliers get paid on time, in full.</li>
+        <li>You repay in instalments that match your cash cycle.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CHAT WIDGET -->
+<div class="chat-widget">
+  <button class="chat-button" onclick="toggleChat()" id="chatButton">
+    💬
+  </button>
+  
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+      <h3>Finzeed Assistant</h3>
+      <button class="chat-close" onclick="toggleChat()">×</button>
+    </div>
+    
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-message bot">
+        <div class="message-bubble">
+          Hi! I'm your Finzeed assistant. How can I help you today? You can ask me about:
+          <br>• Credit application process
+          <br>• Required documents
+          <br>• Repayment terms
+          <br>• Supplier payments
+        </div>
+        <div class="message-time">Just now</div>
+      </div>
+    </div>
+    
+    <div class="chat-input-area">
+      <input 
+        type="text" 
+        class="chat-input" 
+        id="chatInput" 
+        placeholder="Type your message..."
+        onkeypress="handleChatKeyPress(event)"
+      />
+      <button class="chat-send" id="chatSend" onclick="sendChatMessage()">
+        ➤
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // CONFIGURATION
+  const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai';
+  const DEBUG_MODE = true; // Set to false to disable debug logging
+  
+  // Store uploaded files (with blob storage info)
+  let uploadedFilesBlob = {};
+  let chatHistory = [];
+
+  // ========== DEBUG UTILITIES ==========
+  function debugLog(message, data = null) {
+    if (!DEBUG_MODE) return;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `[${timestamp}] ${message}`;
+    
+    console.log(logEntry, data || '');
+    
+    const debugContent = document.getElementById('debugContent');
+    if (debugContent) {
+      const logDiv = document.createElement('div');
+      logDiv.style.marginBottom = '0.5rem';
+      logDiv.style.fontSize = '0.75rem';
+      logDiv.innerHTML = `<strong>${timestamp}</strong>: ${message}`;
+      if (data) {
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(data, null, 2);
+        pre.style.fontSize = '0.7rem';
+        pre.style.background = '#f0f0f0';
+        pre.style.padding = '0.25rem';
+        pre.style.borderRadius = '4px';
+        pre.style.marginTop = '0.25rem';
+        logDiv.appendChild(pre);
+      }
+      debugContent.appendChild(logDiv);
+      debugContent.scrollTop = debugContent.scrollHeight;
+    }
+  }
+
+  // Toggle debug panel with Ctrl+D
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'd') {
+      e.preventDefault();
+      const panel = document.getElementById('debugPanel');
+      panel.classList.toggle('active');
+    }
+  });
+
+  // ========== TAB SYSTEM ==========
+  function openTab(tabId) {
+    debugLog(`Opening tab: ${tabId}`);
+    
+    document.querySelectorAll('.section').forEach(section => {
+      section.classList.remove('active');
+    });
+
+    document.querySelectorAll('.tabs span').forEach(tab => {
+      tab.classList.remove('active');
+    });
+
+    var target = document.getElementById(tabId);
+    if (target) {
+      target.classList.add('active');
+    }
+
+    var tabLabel = document.querySelector('.tabs span[data-tab="' + tabId + '"]');
+    if (tabLabel) {
+      tabLabel.classList.add('active');
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ========== FILE HANDLING WITH BLOB STORAGE ==========
+  
+  // Upload file to Azure Blob Storage
+  async function uploadFileToBlob(file, fileId) {
+    try {
+      debugLog(`Starting blob upload for: ${file.name}`, {
+        fileId: fileId,
+        size: file.size,
+        type: file.type
+      });
+
+      // Step 1: Request upload URL from Azure Function
+      const uploadUrlResponse = await fetch(AZURE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          request_upload_urls: true,
+          files: [{
+            id: fileId,
+            filename: file.name
+          }]
+        })
+      });
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status}`);
+      }
+
+      const urlData = await uploadUrlResponse.json();
+      const uploadInfo = urlData.upload_urls[fileId];
+
+      if (!uploadInfo || !uploadInfo.upload_url) {
+        throw new Error('No upload URL received from server');
+      }
+
+      debugLog(`Received upload URL for ${fileId}`, {
+        blobName: uploadInfo.blob_name
+      });
+
+      // Step 2: Upload file directly to blob storage
+      const uploadResponse = await fetch(uploadInfo.upload_url, {
+        method: 'PUT',
+        headers: {
+          'x-ms-blob-type': 'BlockBlob',
+          'Content-Type': file.type || 'application/octet-stream'
+        },
+        body: file
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Blob upload failed: ${uploadResponse.status}`);
+      }
+
+      debugLog(`Successfully uploaded ${file.name} to blob storage`, {
+        blobName: uploadInfo.blob_name,
+        publicUrl: uploadInfo.public_url
+      });
+
+      // Store the blob information
+      uploadedFilesBlob[fileId] = {
+        blob_name: uploadInfo.blob_name,
+        public_url: uploadInfo.public_url,
+        filename: file.name,
+        size: file.size,
+        type: file.type
+      };
+
+      return uploadInfo;
+
+    } catch (error) {
+      debugLog(`Error uploading ${file.name}`, {
+        error: error.message
+      });
+      throw error;
+    }
+  }
+  
+  // Handle file selection with blob upload
+  async function handleFileSelect(input, nameElementId) {
+    const file = input.files[0];
+    const nameElement = document.getElementById(nameElementId);
+    const uploadBox = input.closest('.upload-box');
+    
+    if (file) {
+      // Check file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`File "${file.name}" is too large (${sizeMB} MB). Maximum size is 10 MB.\n\nPlease compress the file or use a smaller file.`);
+        input.value = '';
+        return;
+      }
+      
+      // Warn for files over 2MB
+      if (file.size > 2 * 1024 * 1024) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const proceed = confirm(`File "${file.name}" is ${sizeMB} MB.\n\nLarge files may take longer to upload.\n\nContinue with this file?`);
+        if (!proceed) {
+          input.value = '';
+          return;
+        }
+      }
+      
+      debugLog(`File selected: ${file.name}`, {
+        size: file.size,
+        type: file.type,
+        inputId: input.id
+      });
+      
+      // Show uploading state
+      nameElement.textContent = `Uploading ${file.name}...`;
+      uploadBox.classList.add('uploading');
+      
+      try {
+        // Upload to blob storage
+        await uploadFileToBlob(file, input.id);
+        
+        // Update UI on success
+        nameElement.textContent = `✓ ${file.name}`;
+        uploadBox.classList.remove('uploading');
+        uploadBox.classList.add('has-file');
+        
+      } catch (error) {
+        // Handle upload error
+        nameElement.textContent = `Failed: ${file.name}`;
+        uploadBox.classList.remove('uploading');
+        uploadBox.classList.add('upload-error');
+        alert(`Failed to upload ${file.name}. Please try again.`);
+        input.value = '';
+        delete uploadedFilesBlob[input.id];
+      }
+    } else {
+      nameElement.textContent = '';
+      uploadBox.classList.remove('has-file', 'uploading', 'upload-error');
+      delete uploadedFilesBlob[input.id];
+    }
+  }
+
+  // ========== FORM SUBMISSION ==========
+  async function handleSubmit(event) {
+    event.preventDefault();
+    
+    debugLog('Form submission started (blob method)');
+    
+    // Validate required files
+    if (!uploadedFilesBlob.bankStatements) {
+      alert('Please upload your bank statements (required for credit assessment)');
+      debugLog('Validation failed: Missing bank statements');
+      return;
+    }
+
+    // Show loading overlay
+    document.getElementById('loadingOverlay').classList.add('active');
+    debugLog('Loading overlay displayed');
+
+    try {
+      // Get form data
+      const formData = {
+        firstname: document.getElementById('firstname').value,
+        lastname: document.getElementById('lastname').value,
+        email: document.getElementById('email').value,
+        mobile: document.getElementById('mobile').value,
+        company: document.getElementById('company').value,
+        industry: document.getElementById('industry').value,
+        revenue: document.getElementById('revenue').value,
+        purpose: document.getElementById('purpose').value
+      };
+
+      debugLog('Form data collected', formData);
+
+      // Send blob URLs instead of base64 data!
+      const document_urls = {};
+      for (const [key, blobInfo] of Object.entries(uploadedFilesBlob)) {
+        document_urls[key] = blobInfo.public_url;
+      }
+
+      debugLog('Document URLs prepared', {
+        count: Object.keys(document_urls).length,
+        files: Object.keys(document_urls)
+      });
+
+      // Prepare request payload (much smaller - no base64!)
+      const payload = {
+        ...formData,
+        document_urls: document_urls
+      };
+
+      debugLog('Sending request to Azure Function', {
+        url: AZURE_FUNCTION_URL,
+        hasDocuments: Object.keys(document_urls).length > 0,
+        payloadSize: JSON.stringify(payload).length
+      });
+
+      // Send to Azure Function (fast!)
+      const response = await fetch(AZURE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      debugLog('Response received', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        debugLog('Server error response', {
+          status: response.status,
+          body: errorText
+        });
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      debugLog('Response parsed successfully', result);
+      
+      // Hide loading overlay
+      document.getElementById('loadingOverlay').classList.remove('active');
+      
+      // Show results
+      displayResults(result);
+
+    } catch (error) {
+      console.error('Error:', error);
+      debugLog('Error during submission', {
+        message: error.message,
+        stack: error.stack
+      });
+      
+      document.getElementById('loadingOverlay').classList.remove('active');
+      
+      // Show error message
+      alert(`Error processing your request: ${error.message}\n\nPlease try again or contact support.`);
+    }
+  }
+
+  // ========== DISPLAY RESULTS ==========
+  function displayResults(result) {
+    debugLog('Displaying results', result);
+    
+    // Check for assessment data
+    if (!result || !result.assessment) {
+      debugLog('Invalid result structure', result);
+      const errorHtml = `
+        <div class="error-message">
+          <h3>Invalid Response</h3>
+          <p>The server response was not in the expected format. Please try again.</p>
+          <pre>${JSON.stringify(result, null, 2)}</pre>
+        </div>
+      `;
+      document.getElementById('resultsBody').innerHTML = errorHtml;
+      document.getElementById('resultsModal').classList.add('active');
+      return;
+    }
+    
+    const assessment = result.assessment;
+    const isApproved = assessment.decision === 'APPROVED';
+    
+    let html = '';
+    
+    // Decision banner
+    if (isApproved) {
+      html += `
+        <div class="decision-approved">
+          <h2>🎉 Congratulations! Your Credit is Approved</h2>
+          <p>Your credit line has been approved based on our AI analysis.</p>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="decision-rejected">
+          <h2>Credit Application Status</h2>
+          <p>We were unable to approve your application at this time.</p>
+        </div>
+      `;
+    }
+
+    // Credit details
+    if (isApproved && assessment.credit_limit) {
+      html += `
+        <div class="result-item">
+          <h4>Approved Credit Limit</h4>
+          <p style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">
+            EGP ${Number(assessment.credit_limit).toLocaleString()}
+          </p>
+        </div>
+      `;
+    }
+
+    if (isApproved && (assessment.tenor_months || assessment.interest_rate)) {
+      html += `
+        <div class="result-item">
+          <h4>Repayment Terms</h4>
+          ${assessment.tenor_months ? `<p><strong>Tenor:</strong> ${assessment.tenor_months} months</p>` : ''}
+          ${assessment.interest_rate ? `<p><strong>Interest Rate:</strong> ${assessment.interest_rate}% per annum</p>` : ''}
+        </div>
+      `;
+    }
+
+    // Risk factors
+    if (assessment.risk_factors && assessment.risk_factors.length > 0) {
+      html += `
+        <div class="result-item">
+          <h4>Assessment Factors</h4>
+          <ul style="margin: 0; padding-left: 1.2rem;">
+            ${assessment.risk_factors.map(factor => `<li>${factor}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // Recommendations
+    if (assessment.recommendations && assessment.recommendations.length > 0) {
+      html += `
+        <div class="result-item">
+          <h4>Recommendations</h4>
+          <ul style="margin: 0; padding-left: 1.2rem;">
+            ${assessment.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // Confidence score
+    if (assessment.confidence_score) {
+      html += `
+        <div class="result-item">
+          <h4>Assessment Confidence</h4>
+          <p>${assessment.confidence_score}% confidence in this assessment</p>
+        </div>
+      `;
+    }
+
+    // Next steps
+    if (result.user_info && result.user_info.email) {
+      html += `
+        <div class="result-item">
+          <h4>Next Steps</h4>
+          <p>Our team will contact you at <strong>${result.user_info.email}</strong> within 24 hours to finalize your application and discuss supplier payment arrangements.</p>
+        </div>
+      `;
+    }
+
+    document.getElementById('resultsBody').innerHTML = html;
+    document.getElementById('resultsModal').classList.add('active');
+  }
+
+  // ========== CLOSE RESULTS ==========
+  function closeResults() {
+    debugLog('Closing results modal');
+    document.getElementById('resultsModal').classList.remove('active');
+    // Reset form
+    document.getElementById('creditForm').reset();
+    uploadedFiles = {};
+    document.querySelectorAll('.file-name').forEach(el => el.textContent = '');
+    document.querySelectorAll('.upload-box').forEach(box => box.classList.remove('has-file'));
+  }
+
+  // ========== CHAT FUNCTIONALITY ==========
+  
+  function toggleChat() {
+    const chatWindow = document.getElementById('chatWindow');
+    const chatButton = document.getElementById('chatButton');
+    chatWindow.classList.toggle('active');
+    
+    if (chatWindow.classList.contains('active')) {
+      chatButton.textContent = '✕';
+      document.getElementById('chatInput').focus();
+      debugLog('Chat opened');
+    } else {
+      chatButton.textContent = '💬';
+      debugLog('Chat closed');
+    }
+  }
+  
+  function handleChatKeyPress(event) {
+    if (event.key === 'Enter') {
+      sendChatMessage();
+    }
+  }
+  
+  async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    debugLog('Sending chat message', { message });
+    
+    // Add user message to chat
+    addMessageToChat('user', message);
+    input.value = '';
+    
+    // Disable send button
+    const sendBtn = document.getElementById('chatSend');
+    sendBtn.disabled = true;
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    try {
+      // Add message to history
+      chatHistory.push({ role: 'user', content: message });
+      
+      debugLog('Calling chat API', {
+        historyLength: chatHistory.length
+      });
+      
+      // Call Azure Function for chat
+      const response = await fetch(AZURE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat: true,
+          message: message,
+          history: chatHistory
+        })
+      });
+      
+      debugLog('Chat response received', {
+        status: response.status,
+        ok: response.ok
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        debugLog('Chat error response', {
+          status: response.status,
+          body: errorText
+        });
+        throw new Error(`Chat service error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      debugLog('Chat response parsed', data);
+      
+      // Remove typing indicator
+      removeTypingIndicator();
+      
+      // Add bot response
+      const botMessage = data.reply || data.message || "I'm sorry, I couldn't process that. Please try again.";
+      addMessageToChat('bot', botMessage);
+      
+      // Add to history
+      chatHistory.push({ role: 'assistant', content: botMessage });
+      
+    } catch (error) {
+      console.error('Chat error:', error);
+      debugLog('Chat error', {
+        message: error.message,
+        stack: error.stack
+      });
+      
+      removeTypingIndicator();
+      addMessageToChat('bot', "I'm having trouble connecting right now. Please try again in a moment or contact our support team.");
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+  
+  function addMessageToChat(sender, message) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${sender}`;
+    
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.innerHTML = `
+      <div class="message-bubble">${escapeHtml(message)}</div>
+      <div class="message-time">${timeString}</div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+  
+  function showTypingIndicator() {
+    const messagesContainer = document.getElementById('chatMessages');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'chat-message bot';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    `;
+    messagesContainer.appendChild(typingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+  
+  function removeTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ========== INITIALIZATION ==========
+  debugLog('Platform initialized', {
+    azureUrl: AZURE_FUNCTION_URL,
+    debugMode: DEBUG_MODE
+  });
+</script>
+
+</body>
+</html>
