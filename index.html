@@ -1,4 +1,4 @@
-const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -700,50 +700,6 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
       color: var(--text-main);
     }
 
-    /* ERROR MESSAGE */
-    .error-message {
-      background: #fee;
-      color: #c00;
-      padding: 1rem;
-      border-radius: 12px;
-      margin: 1rem 0;
-      border: 1px solid #fcc;
-    }
-
-    /* DEBUG PANEL */
-    .debug-panel {
-      position: fixed;
-      bottom: 100px;
-      left: 20px;
-      background: white;
-      border: 2px solid var(--primary);
-      border-radius: 12px;
-      padding: 1rem;
-      max-width: 300px;
-      max-height: 400px;
-      overflow-y: auto;
-      z-index: 1000;
-      font-size: 0.8rem;
-      display: none;
-    }
-
-    .debug-panel.active {
-      display: block;
-    }
-
-    .debug-panel h4 {
-      margin-top: 0;
-      color: var(--primary);
-    }
-
-    .debug-panel pre {
-      background: #f5f5f5;
-      padding: 0.5rem;
-      border-radius: 4px;
-      overflow-x: auto;
-      font-size: 0.75rem;
-    }
-
     /* CHAT WIDGET */
     .chat-widget {
       position: fixed;
@@ -1017,49 +973,9 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
         width: 100%;
       }
     }
-
-    /* BLOB UPLOAD STATES */
-    .upload-box.uploading {
-      border-color: var(--accent);
-      background: #e3f5f7;
-      position: relative;
-      pointer-events: none;
-    }
-
-    .upload-box.uploading::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      right: 1rem;
-      width: 20px;
-      height: 20px;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid var(--accent);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    .upload-box.upload-error {
-      border-color: #c00;
-      background: #fee;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
   </style>
 </head>
 <body>
-
-<!-- Debug Panel (Toggle with Ctrl+D) -->
-<div class="debug-panel" id="debugPanel">
-  <h4>Debug Console</h4>
-  <div id="debugContent">
-    <p>Press Ctrl+D to toggle this panel</p>
-    <p>Logs will appear here...</p>
-  </div>
-</div>
 
 <!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay">
@@ -1430,57 +1346,13 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
 </div>
 
 <script>
-  // CONFIGURATION
-  const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';;
-  const DEBUG_MODE = true; // Set to false to disable debug logging
+  const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';
   
-  // Store uploaded files (with blob storage info)
-  let uploadedFilesBlob = {};
-  let chatHistory = [];
+  // Store uploaded files
+  let uploadedFiles = {};
 
-  // ========== DEBUG UTILITIES ==========
-  function debugLog(message, data = null) {
-    if (!DEBUG_MODE) return;
-    
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = `[${timestamp}] ${message}`;
-    
-    console.log(logEntry, data || '');
-    
-    const debugContent = document.getElementById('debugContent');
-    if (debugContent) {
-      const logDiv = document.createElement('div');
-      logDiv.style.marginBottom = '0.5rem';
-      logDiv.style.fontSize = '0.75rem';
-      logDiv.innerHTML = `<strong>${timestamp}</strong>: ${message}`;
-      if (data) {
-        const pre = document.createElement('pre');
-        pre.textContent = JSON.stringify(data, null, 2);
-        pre.style.fontSize = '0.7rem';
-        pre.style.background = '#f0f0f0';
-        pre.style.padding = '0.25rem';
-        pre.style.borderRadius = '4px';
-        pre.style.marginTop = '0.25rem';
-        logDiv.appendChild(pre);
-      }
-      debugContent.appendChild(logDiv);
-      debugContent.scrollTop = debugContent.scrollHeight;
-    }
-  }
-
-  // Toggle debug panel with Ctrl+D
-  document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.key === 'd') {
-      e.preventDefault();
-      const panel = document.getElementById('debugPanel');
-      panel.classList.toggle('active');
-    }
-  });
-
-  // ========== TAB SYSTEM ==========
+  // Tab system
   function openTab(tabId) {
-    debugLog(`Opening tab: ${tabId}`);
-    
     document.querySelectorAll('.section').forEach(section => {
       section.classList.remove('active');
     });
@@ -1502,162 +1374,45 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ========== FILE HANDLING WITH BLOB STORAGE ==========
-  
-  // Upload file to Azure Blob Storage
-  async function uploadFileToBlob(file, fileId) {
-    try {
-      debugLog(`Starting blob upload for: ${file.name}`, {
-        fileId: fileId,
-        size: file.size,
-        type: file.type
-      });
-
-      // Step 1: Request upload URL from Azure Function
-      const uploadUrlResponse = await fetch(AZURE_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          request_upload_urls: true,
-          files: [{
-            id: fileId,
-            filename: file.name
-          }]
-        })
-      });
-
-      if (!uploadUrlResponse.ok) {
-        throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status}`);
-      }
-
-      const urlData = await uploadUrlResponse.json();
-      const uploadInfo = urlData.upload_urls[fileId];
-
-      if (!uploadInfo || !uploadInfo.upload_url) {
-        throw new Error('No upload URL received from server');
-      }
-
-      debugLog(`Received upload URL for ${fileId}`, {
-        blobName: uploadInfo.blob_name
-      });
-
-      // Step 2: Upload file directly to blob storage
-      const uploadResponse = await fetch(uploadInfo.upload_url, {
-        method: 'PUT',
-        headers: {
-          'x-ms-blob-type': 'BlockBlob',
-          'Content-Type': file.type || 'application/octet-stream'
-        },
-        body: file
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Blob upload failed: ${uploadResponse.status}`);
-      }
-
-      debugLog(`Successfully uploaded ${file.name} to blob storage`, {
-        blobName: uploadInfo.blob_name,
-        publicUrl: uploadInfo.public_url
-      });
-
-      // Store the blob information
-      uploadedFilesBlob[fileId] = {
-        blob_name: uploadInfo.blob_name,
-        public_url: uploadInfo.public_url,
-        filename: file.name,
-        size: file.size,
-        type: file.type
-      };
-
-      return uploadInfo;
-
-    } catch (error) {
-      debugLog(`Error uploading ${file.name}`, {
-        error: error.message
-      });
-      throw error;
-    }
-  }
-  
-  // Handle file selection with blob upload
-  async function handleFileSelect(input, nameElementId) {
+  // Handle file selection
+  function handleFileSelect(input, nameElementId) {
     const file = input.files[0];
     const nameElement = document.getElementById(nameElementId);
     const uploadBox = input.closest('.upload-box');
     
     if (file) {
-      // Check file size (10MB limit)
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      if (file.size > maxSize) {
-        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        alert(`File "${file.name}" is too large (${sizeMB} MB). Maximum size is 10 MB.\n\nPlease compress the file or use a smaller file.`);
-        input.value = '';
-        return;
-      }
-      
-      // Warn for files over 2MB
-      if (file.size > 2 * 1024 * 1024) {
-        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        const proceed = confirm(`File "${file.name}" is ${sizeMB} MB.\n\nLarge files may take longer to upload.\n\nContinue with this file?`);
-        if (!proceed) {
-          input.value = '';
-          return;
-        }
-      }
-      
-      debugLog(`File selected: ${file.name}`, {
-        size: file.size,
-        type: file.type,
-        inputId: input.id
-      });
-      
-      // Show uploading state
-      nameElement.textContent = `Uploading ${file.name}...`;
-      uploadBox.classList.add('uploading');
-      
-      try {
-        // Upload to blob storage
-        await uploadFileToBlob(file, input.id);
-        
-        // Update UI on success
-        nameElement.textContent = `✓ ${file.name}`;
-        uploadBox.classList.remove('uploading');
-        uploadBox.classList.add('has-file');
-        
-      } catch (error) {
-        // Handle upload error
-        nameElement.textContent = `Failed: ${file.name}`;
-        uploadBox.classList.remove('uploading');
-        uploadBox.classList.add('upload-error');
-        alert(`Failed to upload ${file.name}. Please try again.`);
-        input.value = '';
-        delete uploadedFilesBlob[input.id];
-      }
+      nameElement.textContent = file.name;
+      uploadBox.classList.add('has-file');
+      uploadedFiles[input.id] = file;
     } else {
       nameElement.textContent = '';
-      uploadBox.classList.remove('has-file', 'uploading', 'upload-error');
-      delete uploadedFilesBlob[input.id];
+      uploadBox.classList.remove('has-file');
+      delete uploadedFiles[input.id];
     }
   }
 
-  // ========== FORM SUBMISSION ==========
+  // Convert file to base64
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Handle form submission
   async function handleSubmit(event) {
     event.preventDefault();
     
-    debugLog('Form submission started (blob method)');
-    
-    // Validate required files
-    if (!uploadedFilesBlob.bankStatements) {
+    // Check if at least bank statements are uploaded
+    if (!uploadedFiles || Object.keys(uploadedFiles).length === 0 || !uploadedFiles['bankStatements']) {
       alert('Please upload your bank statements (required for credit assessment)');
-      debugLog('Validation failed: Missing bank statements');
       return;
     }
 
     // Show loading overlay
     document.getElementById('loadingOverlay').classList.add('active');
-    debugLog('Loading overlay displayed');
 
     try {
       // Get form data
@@ -1672,57 +1427,37 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
         purpose: document.getElementById('purpose').value
       };
 
-      debugLog('Form data collected', formData);
-
-      // Send blob URLs instead of base64 data!
-      const document_urls = {};
-      for (const [key, blobInfo] of Object.entries(uploadedFilesBlob)) {
-        document_urls[key] = blobInfo.public_url;
+      // Convert files to base64
+      const documents = {};
+      for (const [key, file] of Object.entries(uploadedFiles)) {
+        if (file) {
+          documents[key] = {
+            filename: file.name,
+            content: await fileToBase64(file),
+            type: file.type
+          };
+        }
       }
 
-      debugLog('Document URLs prepared', {
-        count: Object.keys(document_urls).length,
-        files: Object.keys(document_urls)
-      });
-
-      // Prepare request payload (much smaller - no base64!)
-      const payload = {
-        ...formData,
-        document_urls: document_urls
-      };
-
-      debugLog('Sending request to Azure Function', {
-        url: AZURE_FUNCTION_URL,
-        hasDocuments: Object.keys(document_urls).length > 0,
-        payloadSize: JSON.stringify(payload).length
-      });
-
-      // Send to Azure Function (fast!)
+      // Send to Azure Function
       const response = await fetch(AZURE_FUNCTION_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
-      });
-
-      debugLog('Response received', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
+        body: JSON.stringify({
+          ...formData,
+          documents: documents
+        })
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        debugLog('Server error response', {
-          status: response.status,
-          body: errorText
-        });
-        throw new Error(`Server error: ${response.status} - ${errorText}`);
+        console.error('Server response:', errorText);
+        throw new Error(`Server error: ${response.status}`);
       }
 
       const result = await response.json();
-      debugLog('Response parsed successfully', result);
       
       // Hide loading overlay
       document.getElementById('loadingOverlay').classList.remove('active');
@@ -1732,37 +1467,13 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
 
     } catch (error) {
       console.error('Error:', error);
-      debugLog('Error during submission', {
-        message: error.message,
-        stack: error.stack
-      });
-      
       document.getElementById('loadingOverlay').classList.remove('active');
-      
-      // Show error message
-      alert(`Error processing your request: ${error.message}\n\nPlease try again or contact support.`);
+      alert('Error processing your request. Please try again or contact support.');
     }
   }
 
-  // ========== DISPLAY RESULTS ==========
+  // Display results in modal
   function displayResults(result) {
-    debugLog('Displaying results', result);
-    
-    // Check for assessment data
-    if (!result || !result.assessment) {
-      debugLog('Invalid result structure', result);
-      const errorHtml = `
-        <div class="error-message">
-          <h3>Invalid Response</h3>
-          <p>The server response was not in the expected format. Please try again.</p>
-          <pre>${JSON.stringify(result, null, 2)}</pre>
-        </div>
-      `;
-      document.getElementById('resultsBody').innerHTML = errorHtml;
-      document.getElementById('resultsModal').classList.add('active');
-      return;
-    }
-    
     const assessment = result.assessment;
     const isApproved = assessment.decision === 'APPROVED';
     
@@ -1786,7 +1497,7 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
     }
 
     // Credit details
-    if (isApproved && assessment.credit_limit) {
+    if (isApproved) {
       html += `
         <div class="result-item">
           <h4>Approved Credit Limit</h4>
@@ -1794,15 +1505,11 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
             EGP ${Number(assessment.credit_limit).toLocaleString()}
           </p>
         </div>
-      `;
-    }
 
-    if (isApproved && (assessment.tenor_months || assessment.interest_rate)) {
-      html += `
         <div class="result-item">
           <h4>Repayment Terms</h4>
-          ${assessment.tenor_months ? `<p><strong>Tenor:</strong> ${assessment.tenor_months} months</p>` : ''}
-          ${assessment.interest_rate ? `<p><strong>Interest Rate:</strong> ${assessment.interest_rate}% per annum</p>` : ''}
+          <p><strong>Tenor:</strong> ${assessment.tenor_months} months</p>
+          <p><strong>Interest Rate:</strong> ${assessment.interest_rate}% per annum</p>
         </div>
       `;
     }
@@ -1842,22 +1549,19 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
     }
 
     // Next steps
-    if (result.user_info && result.user_info.email) {
-      html += `
-        <div class="result-item">
-          <h4>Next Steps</h4>
-          <p>Our team will contact you at <strong>${result.user_info.email}</strong> within 24 hours to finalize your application and discuss supplier payment arrangements.</p>
-        </div>
-      `;
-    }
+    html += `
+      <div class="result-item">
+        <h4>Next Steps</h4>
+        <p>Our team will contact you at <strong>${result.user_info.email}</strong> within 24 hours to finalize your application and discuss supplier payment arrangements.</p>
+      </div>
+    `;
 
     document.getElementById('resultsBody').innerHTML = html;
     document.getElementById('resultsModal').classList.add('active');
   }
 
-  // ========== CLOSE RESULTS ==========
+  // Close results modal
   function closeResults() {
-    debugLog('Closing results modal');
     document.getElementById('resultsModal').classList.remove('active');
     // Reset form
     document.getElementById('creditForm').reset();
@@ -1868,6 +1572,8 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
 
   // ========== CHAT FUNCTIONALITY ==========
   
+  let chatHistory = [];
+  
   function toggleChat() {
     const chatWindow = document.getElementById('chatWindow');
     const chatButton = document.getElementById('chatButton');
@@ -1876,10 +1582,8 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
     if (chatWindow.classList.contains('active')) {
       chatButton.textContent = '✕';
       document.getElementById('chatInput').focus();
-      debugLog('Chat opened');
     } else {
       chatButton.textContent = '💬';
-      debugLog('Chat closed');
     }
   }
   
@@ -1894,8 +1598,6 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
     const message = input.value.trim();
     
     if (!message) return;
-    
-    debugLog('Sending chat message', { message });
     
     // Add user message to chat
     addMessageToChat('user', message);
@@ -1912,10 +1614,6 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
       // Add message to history
       chatHistory.push({ role: 'user', content: message });
       
-      debugLog('Calling chat API', {
-        historyLength: chatHistory.length
-      });
-      
       // Call Azure Function for chat
       const response = await fetch(AZURE_FUNCTION_URL, {
         method: 'POST',
@@ -1929,22 +1627,11 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
         })
       });
       
-      debugLog('Chat response received', {
-        status: response.status,
-        ok: response.ok
-      });
-      
       if (!response.ok) {
-        const errorText = await response.text();
-        debugLog('Chat error response', {
-          status: response.status,
-          body: errorText
-        });
-        throw new Error(`Chat service error: ${response.status}`);
+        throw new Error('Chat service unavailable');
       }
       
       const data = await response.json();
-      debugLog('Chat response parsed', data);
       
       // Remove typing indicator
       removeTypingIndicator();
@@ -1958,11 +1645,6 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
       
     } catch (error) {
       console.error('Chat error:', error);
-      debugLog('Chat error', {
-        message: error.message,
-        stack: error.stack
-      });
-      
       removeTypingIndicator();
       addMessageToChat('bot', "I'm having trouble connecting right now. Please try again in a moment or contact our support team.");
     } finally {
@@ -2015,12 +1697,6 @@ const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenor
     div.textContent = text;
     return div.innerHTML;
   }
-
-  // ========== INITIALIZATION ==========
-  debugLog('Platform initialized', {
-    azureUrl: AZURE_FUNCTION_URL,
-    debugMode: DEBUG_MODE
-  });
 </script>
 
 </body>
