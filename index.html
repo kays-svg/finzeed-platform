@@ -1251,10 +1251,10 @@
               <input type="file" id="nationalId" accept="image/*,.pdf" onchange="handleFileSelect(this, 'nationalIdName')" />
             </div>
             <div class="upload-box" onclick="document.getElementById('bankStatements').click()">
-              <p>🏦 Bank statements</p>
-              <small>Last 6–12 months in PDF format.</small>
+              <p>🏦 Bank statements (Multiple files allowed)</p>
+              <small>Last 6–12 months in PDF format. You can upload multiple files.</small>
               <div class="file-name" id="bankStatementsName"></div>
-              <input type="file" id="bankStatements" accept=".pdf" onchange="handleFileSelect(this, 'bankStatementsName')" />
+              <input type="file" id="bankStatements" accept=".pdf" multiple onchange="handleMultipleFileSelect(this, 'bankStatementsName')" />
             </div>
           </div>
 
@@ -1391,6 +1391,30 @@
     }
   }
 
+  // Handle multiple file selection (for bank statements)
+  function handleMultipleFileSelect(input, nameElementId) {
+    const files = Array.from(input.files);
+    const nameElement = document.getElementById(nameElementId);
+    const uploadBox = input.closest('.upload-box');
+    
+    if (files.length > 0) {
+      // Store all files as an array
+      uploadedFiles[input.id] = files;
+      
+      // Show file names
+      if (files.length === 1) {
+        nameElement.textContent = files[0].name;
+      } else {
+        nameElement.textContent = `${files.length} files selected: ${files.map(f => f.name).join(', ')}`;
+      }
+      uploadBox.classList.add('has-file');
+    } else {
+      nameElement.textContent = '';
+      uploadBox.classList.remove('has-file');
+      delete uploadedFiles[input.id];
+    }
+  }
+
   // Convert file to base64
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -1429,13 +1453,28 @@
 
       // Convert files to base64
       const documents = {};
-      for (const [key, file] of Object.entries(uploadedFiles)) {
-        if (file) {
-          documents[key] = {
-            filename: file.name,
-            content: await fileToBase64(file),
-            type: file.type
-          };
+      for (const [key, fileOrFiles] of Object.entries(uploadedFiles)) {
+        if (Array.isArray(fileOrFiles)) {
+          // Handle multiple files (bank statements)
+          documents[key] = [];
+          for (let i = 0; i < fileOrFiles.length; i++) {
+            const file = fileOrFiles[i];
+            documents[key].push({
+              filename: file.name,
+              content: await fileToBase64(file),
+              type: file.type
+            });
+          }
+        } else {
+          // Handle single file
+          const file = fileOrFiles;
+          if (file) {
+            documents[key] = {
+              filename: file.name,
+              content: await fileToBase64(file),
+              type: file.type
+            };
+          }
         }
       }
 
