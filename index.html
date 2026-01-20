@@ -683,6 +683,15 @@
       text-align: center;
     }
 
+    .decision-pending {
+      background: #fff3cd;
+      color: #856404;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
     .result-item {
       padding: 1rem;
       background: #f9fbfa;
@@ -1511,10 +1520,12 @@
     }
   }
 
-  // Display results in modal
+  // Display results in modal - FIXED VERSION
   function displayResults(result) {
-    const assessment = result.assessment;
-    const isApproved = assessment.decision === 'APPROVED';
+    const assessment = result.assessment || {};
+    const status = assessment.status || 'PENDING';
+    const isApproved = status === 'APPROVED';
+    const isUnderReview = status === 'UNDER_REVIEW';
     
     let html = '';
     
@@ -1526,6 +1537,13 @@
           <p>Your credit line has been approved based on our AI analysis.</p>
         </div>
       `;
+    } else if (isUnderReview) {
+      html += `
+        <div class="decision-pending">
+          <h2>⏳ Application Under Review</h2>
+          <p>Your application is being reviewed. We'll contact you shortly.</p>
+        </div>
+      `;
     } else {
       html += `
         <div class="decision-rejected">
@@ -1535,8 +1553,18 @@
       `;
     }
 
-    // Credit details
-    if (isApproved) {
+    // Show explanation if available
+    if (assessment.explanation) {
+      html += `
+        <div class="result-item">
+          <h4>Assessment Details</h4>
+          <p>${escapeHtml(assessment.explanation)}</p>
+        </div>
+      `;
+    }
+
+    // Credit details (if approved)
+    if (isApproved && assessment.credit_limit) {
       html += `
         <div class="result-item">
           <h4>Approved Credit Limit</h4>
@@ -1544,54 +1572,49 @@
             EGP ${Number(assessment.credit_limit).toLocaleString()}
           </p>
         </div>
+      `;
+      
+      if (assessment.term || assessment.tenor_months) {
+        html += `
+          <div class="result-item">
+            <h4>Repayment Terms</h4>
+            <p><strong>Tenor:</strong> ${assessment.term || assessment.tenor_months} months</p>
+            ${assessment.interest_rate ? `<p><strong>Interest Rate:</strong> ${assessment.interest_rate}% per month</p>` : ''}
+          </div>
+        `;
+      }
+    }
 
-        <div class="result-item">
-          <h4>Repayment Terms</h4>
-          <p><strong>Tenor:</strong> ${assessment.tenor_months} months</p>
-          <p><strong>Interest Rate:</strong> ${assessment.interest_rate}% per annum</p>
+    // Bank analysis warning
+    if (result.bank_analysis && result.bank_analysis.warning) {
+      html += `
+        <div class="result-item" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+          <h4>⚠️ Bank Statement Analysis</h4>
+          <p>${escapeHtml(result.bank_analysis.warning)}</p>
         </div>
       `;
     }
 
-    // Risk factors
-    if (assessment.risk_factors && assessment.risk_factors.length > 0) {
+    // Application ID
+    if (result.application_id) {
       html += `
         <div class="result-item">
-          <h4>Assessment Factors</h4>
-          <ul style="margin: 0; padding-left: 1.2rem;">
-            ${assessment.risk_factors.map(factor => `<li>${factor}</li>`).join('')}
-          </ul>
-        </div>
-      `;
-    }
-
-    // Recommendations
-    if (assessment.recommendations && assessment.recommendations.length > 0) {
-      html += `
-        <div class="result-item">
-          <h4>Recommendations</h4>
-          <ul style="margin: 0; padding-left: 1.2rem;">
-            ${assessment.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-          </ul>
-        </div>
-      `;
-    }
-
-    // Confidence score
-    if (assessment.confidence_score) {
-      html += `
-        <div class="result-item">
-          <h4>Assessment Confidence</h4>
-          <p>${assessment.confidence_score}% confidence in this assessment</p>
+          <h4>Application Reference</h4>
+          <p><strong>Application ID:</strong> ${result.application_id}</p>
         </div>
       `;
     }
 
     // Next steps
+    const formData = {
+      email: document.getElementById('email').value,
+      mobile: document.getElementById('mobile').value
+    };
+    
     html += `
       <div class="result-item">
         <h4>Next Steps</h4>
-        <p>Our team will contact you at <strong>${result.user_info.email}</strong> within 24 hours to finalize your application and discuss supplier payment arrangements.</p>
+        <p>Our team will contact you at <strong>${formData.email}</strong> or <strong>${formData.mobile}</strong> within 24 hours to finalize your application and discuss supplier payment arrangements.</p>
       </div>
     `;
 
