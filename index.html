@@ -1514,26 +1514,28 @@
       // Create FormData (NOT JSON for file uploads)
       const formData = new FormData();
       
-      // Add form fields
-      formData.append('companyName', document.getElementById('company').value);
-      formData.append('contactName', document.getElementById('firstname').value + ' ' + document.getElementById('lastname').value);
+      // Add form fields - MATCH BACKEND FIELD NAMES
+      formData.append('company', document.getElementById('company').value);
+      formData.append('firstname', document.getElementById('firstname').value);
+      formData.append('lastname', document.getElementById('lastname').value);
       formData.append('email', document.getElementById('email').value);
       formData.append('mobile', document.getElementById('mobile').value);
       formData.append('revenue', document.getElementById('revenue').value);
-      formData.append('requestedCredit', document.getElementById('revenue').value * 0.3); // 30% of revenue
-      formData.append('creditPeriod', 12); // Default 12 months
+      formData.append('industry', document.getElementById('industry').value);
+      formData.append('purpose', document.getElementById('purpose').value || '');
       
       console.log('✅ Form data added');
       
       // ===== FIXED: Add ALL bank statement files =====
+      // Backend checks for both 'bank_statements' and 'bankStatements'
       bankStatementFiles.forEach((file, index) => {
         formData.append('bankStatements', file);
         console.log(`  📄 Added bank statement ${index + 1}: ${file.name}`);
       });
       
-      // Add other documents
+      // Add other documents (these are optional)
       if (uploadedFiles['commercialReg']) {
-        formData.append('tradeLicense', uploadedFiles['commercialReg']);
+        formData.append('commercialReg', uploadedFiles['commercialReg']);
         console.log('  📄 Added commercial registration');
       }
       
@@ -1581,77 +1583,115 @@
     }
   }
 
-  // Display results in modal
+  // Display results in modal - FIXED to read correct response structure
   function displayResults(result) {
     console.log('📊 Displaying results:', result);
     
-    const assessment = result.assessment || result.ai_assessment || '';
+    // Get data from response - your Azure Function returns these fields directly
+    const decision = result.decision; // "APPROVED" or "UNDER_REVIEW"
+    const creditLimit = result.credit_limit;
+    const tenorMonths = result.tenor_months;
+    const interestRate = result.interest_rate;
+    const confidenceScore = result.confidence_score;
+    const riskFactors = result.risk_factors || [];
+    const recommendations = result.recommendations || [];
     const applicationId = result.application_id;
     const bankAnalysis = result.bank_analysis;
-    const revenueDiscrepancy = result.revenue_discrepancy;
-    const verifiedRevenue = result.verified_revenue;
     
     let html = '';
     
-    // Check if approved
-    const isApproved = assessment.toLowerCase().includes('approved') && !assessment.toLowerCase().includes('under review');
-    const isUnderReview = assessment.toLowerCase().includes('under review');
-    
-    // Decision banner
-    if (isApproved) {
+    // Decision banner - check the actual decision field
+    if (decision === 'APPROVED') {
       html += `
         <div class="decision-approved">
           <h2>🎉 Congratulations! Your Credit is Approved</h2>
-          <p>Your credit line has been approved based on our AI analysis.</p>
+          <p>Your credit line has been approved by our AI assessment.</p>
         </div>
       `;
-    } else if (isUnderReview) {
+      
+      // Credit details
+      html += `
+        <div class="result-item">
+          <h4>💰 Approved Credit Limit</h4>
+          <p style="font-size: 1.8rem; font-weight: 700; color: var(--primary); margin: 0.5rem 0;">
+            EGP ${Number(creditLimit).toLocaleString()}
+          </p>
+        </div>
+      `;
+      
+      html += `
+        <div class="result-item">
+          <h4>📋 Repayment Terms</h4>
+          <p><strong>Tenor:</strong> ${tenorMonths} months</p>
+          <p><strong>Interest Rate:</strong> ${interestRate}% annually (${(interestRate/12).toFixed(1)}% monthly)</p>
+          <p><strong>Confidence Score:</strong> ${confidenceScore}%</p>
+        </div>
+      `;
+      
+      // Risk factors
+      if (riskFactors.length > 0) {
+        html += `
+          <div class="result-item">
+            <h4>📊 Assessment Factors</h4>
+            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+        `;
+        riskFactors.forEach(factor => {
+          html += `<li>${escapeHtml(factor)}</li>`;
+        });
+        html += `</ul></div>`;
+      }
+      
+    } else if (decision === 'UNDER_REVIEW') {
       html += `
         <div class="decision-pending">
           <h2>⏳ Application Under Review</h2>
-          <p>Your application is being reviewed. We'll contact you shortly.</p>
+          <p>Your application requires manual review by our team.</p>
         </div>
       `;
+      
+      // Show recommended amount if any
+      if (creditLimit && creditLimit > 0) {
+        html += `
+          <div class="result-item">
+            <h4>Preliminary Assessment</h4>
+            <p><strong>Estimated Credit:</strong> EGP ${Number(creditLimit).toLocaleString()}</p>
+            <p><strong>Tenor:</strong> ${tenorMonths} months</p>
+          </div>
+        `;
+      }
     } else {
       html += `
         <div class="decision-rejected">
-          <h2>Credit Application Status</h2>
+          <h2>❌ Credit Application Status</h2>
           <p>We were unable to approve your application at this time.</p>
         </div>
       `;
     }
 
-    // Show AI assessment
-    if (assessment) {
+    // Recommendations
+    if (recommendations.length > 0) {
       html += `
         <div class="result-item">
-          <h4>Assessment Details</h4>
-          <p style="white-space: pre-wrap;">${escapeHtml(assessment)}</p>
-        </div>
+          <h4>📝 Recommendations</h4>
+          <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
       `;
+      recommendations.forEach(rec => {
+        html += `<li>${escapeHtml(rec)}</li>`;
+      });
+      html += `</ul></div>`;
     }
 
-    // Bank analysis details
-    if (bankAnalysis && Array.isArray(bankAnalysis) && bankAnalysis.length > 0) {
+    // Bank analysis status
+    if (bankAnalysis && bankAnalysis.total_inflows) {
       html += `
-        <div class="result-item">
+        <div class="result-item" style="background: #e8f5ea; border-left: 4px solid var(--primary);">
           <h4>✅ Bank Statement Analysis Complete</h4>
-          <p><strong>${bankAnalysis.length} bank statement(s) analyzed</strong></p>
+          <p><strong>Total Inflows:</strong> ${Number(bankAnalysis.total_inflows).toLocaleString()} EGP</p>
+          <p><strong>Monthly Average:</strong> ${Number(bankAnalysis.monthly_average).toLocaleString()} EGP</p>
+          <p><strong>Annual Estimate:</strong> ${Number(bankAnalysis.annual_estimate).toLocaleString()} EGP</p>
+          <p><strong>Transactions Analyzed:</strong> ${bankAnalysis.transactions_found}</p>
+        </div>
       `;
-      
-      if (verifiedRevenue) {
-        html += `<p><strong>Verified Annual Revenue:</strong> ${Number(verifiedRevenue).toLocaleString()} EGP</p>`;
-      }
-      
-      if (revenueDiscrepancy) {
-        html += `
-          <p style="color: #dc3545; font-weight: 600;">
-            ⚠️ Revenue discrepancy detected - Manual review required
-          </p>
-        `;
-      }
-      
-      html += `</div>`;
     } else if (bankAnalysis === null) {
       html += `
         <div class="result-item" style="background: #fff3cd; border-left: 4px solid #ffc107;">
@@ -1665,8 +1705,11 @@
     if (applicationId) {
       html += `
         <div class="result-item">
-          <h4>Application Reference</h4>
+          <h4>📌 Application Reference</h4>
           <p><strong>Application ID:</strong> ${applicationId}</p>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+            Please keep this ID for future reference.
+          </p>
         </div>
       `;
     }
@@ -1677,8 +1720,11 @@
     
     html += `
       <div class="result-item">
-        <h4>Next Steps</h4>
-        <p>Our team will contact you at <strong>${email}</strong> or <strong>${mobile}</strong> within 24-48 hours to finalize your application and discuss supplier payment arrangements.</p>
+        <h4>🚀 Next Steps</h4>
+        <p>Our team will contact you at:</p>
+        <p><strong>📧 Email:</strong> ${email}</p>
+        <p><strong>📱 Mobile:</strong> ${mobile}</p>
+        <p style="margin-top: 0.5rem;">Expected contact time: <strong>24-48 hours</strong></p>
       </div>
     `;
 
