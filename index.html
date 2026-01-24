@@ -1506,6 +1506,17 @@
     console.log('🚀 Starting form submission...');
     console.log(`📊 Bank statements to upload: ${bankStatementFiles.length}`);
     
+    // DETAILED FILE VERIFICATION
+    console.log('🔍 FILE VERIFICATION:');
+    bankStatementFiles.forEach((file, idx) => {
+      console.log(`  📄 Bank Statement ${idx + 1}:`, {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: new Date(file.lastModified).toLocaleString()
+      });
+    });
+    
     // Show loading overlay
     document.getElementById('loadingOverlay').classList.add('active');
     document.getElementById('submitBtn').disabled = true;
@@ -1743,12 +1754,25 @@
     bankStatementFiles = [];
     uploadedFiles = {};
     
+    // FORCE clear all file inputs (prevents browser caching)
+    const fileInputs = ['bankStatements', 'commercialReg', 'taxCard', 'nationalId'];
+    fileInputs.forEach(inputId => {
+      const input = document.getElementById(inputId);
+      if (input) {
+        input.value = '';
+        // Force browser to forget the file by changing type
+        const originalType = input.type;
+        input.type = 'text';
+        input.type = originalType;
+      }
+    });
+    
     // Clear file displays
     document.querySelectorAll('.file-name').forEach(el => el.textContent = '');
     document.getElementById('bankStatementsList').innerHTML = '';
     document.querySelectorAll('.upload-box').forEach(box => box.classList.remove('has-file'));
     
-    console.log('✅ Form reset');
+    console.log('✅ Form completely reset - all file inputs cleared');
   }
 
   // ========== CHAT FUNCTIONALITY ==========
