@@ -537,6 +537,48 @@
       color: var(--primary);
       margin-top: 0.3rem;
       font-weight: 600;
+      word-break: break-word;
+    }
+
+    /* NEW: File list for multiple bank statements */
+    .file-list {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.4rem 0.6rem;
+      background: rgba(5, 105, 15, 0.05);
+      border-radius: 6px;
+      font-size: 0.75rem;
+    }
+
+    .file-item-name {
+      color: var(--primary);
+      font-weight: 500;
+      flex: 1;
+      margin-right: 0.5rem;
+      word-break: break-word;
+    }
+
+    .remove-file {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+
+    .remove-file:hover {
+      background: #c82333;
     }
 
     .submit-row {
@@ -991,7 +1033,7 @@
   <div class="loading-content">
     <div class="spinner"></div>
     <h3>Analyzing your documents...</h3>
-    <p>Our AI is processing your information. This may take a moment.</p>
+    <p>Our AI is processing your bank statements and information. This may take 30-60 seconds.</p>
   </div>
 </div>
 
@@ -1190,7 +1232,7 @@
 <section id="request" class="section">
   <h2>Request your Finzeed credit line</h2>
   <p class="lead">
-    Share your basic details and upload the required documents. Our AI will analyze your information and provide instant credit assessment.
+    Share your basic details and upload the required documents. Our AI will analyze your bank statements and provide instant credit assessment.
   </p>
 
   <div class="request-layout">
@@ -1239,8 +1281,8 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="revenue">Annual revenue (EGP)</label>
-            <input type="number" id="revenue" name="revenue" placeholder="e.g. 10,000,000" />
+            <label for="revenue">Annual revenue (EGP) *</label>
+            <input type="number" id="revenue" name="revenue" placeholder="e.g. 10,000,000" required />
           </div>
         </div>
 
@@ -1259,23 +1301,25 @@
               <div class="file-name" id="nationalIdName"></div>
               <input type="file" id="nationalId" accept="image/*,.pdf" onchange="handleFileSelect(this, 'nationalIdName')" />
             </div>
-            <div class="upload-box" onclick="document.getElementById('bankStatements').click()">
-              <p>🏦 Bank statements (Multiple files allowed)</p>
-              <small>Last 6–12 months in PDF format. You can upload multiple files.</small>
-              <div class="file-name" id="bankStatementsName"></div>
-              <input type="file" id="bankStatements" accept=".pdf" multiple onchange="handleMultipleFileSelect(this, 'bankStatementsName')" />
+            
+            <!-- FIXED: Bank statements with multiple file support -->
+            <div class="upload-box" id="bankStatementsBox" onclick="document.getElementById('bankStatements').click()">
+              <p>🏦 Bank statements *</p>
+              <small>Last 6–12 months in PDF format. Multiple files allowed.</small>
+              <input type="file" id="bankStatements" accept=".pdf" multiple required onchange="handleBankStatementsSelect(this)" />
+              <div id="bankStatementsList" class="file-list"></div>
             </div>
           </div>
 
           <div class="upload-row">
             <div class="upload-box" onclick="document.getElementById('commercialReg').click()">
-              <p>📄 Commercial registration</p>
+              <p>📄 Commercial registration *</p>
               <small>Company legal docs.</small>
               <div class="file-name" id="commercialRegName"></div>
-              <input type="file" id="commercialReg" accept="image/*,.pdf" onchange="handleFileSelect(this, 'commercialRegName')" />
+              <input type="file" id="commercialReg" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'commercialRegName')" />
             </div>
             <div class="upload-box" onclick="document.getElementById('taxCard').click()">
-              <p>💰 Tax card (if available)</p>
+              <p>💰 Tax card</p>
               <small>Optional but recommended.</small>
               <div class="file-name" id="taxCardName"></div>
               <input type="file" id="taxCard" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxCardName')" />
@@ -1284,7 +1328,7 @@
         </div>
 
         <div class="submit-row">
-          <button type="submit" class="big-btn big-primary">
+          <button type="submit" class="big-btn big-primary" id="submitBtn">
             Submit credit request
           </button>
           <span class="helper-text">
@@ -1357,7 +1401,8 @@
 <script>
   const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';
   
-  // Store uploaded files
+  // ===== FIXED: Store ALL bank statement files in array =====
+  let bankStatementFiles = [];
   let uploadedFiles = {};
 
   // Tab system
@@ -1383,7 +1428,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Handle file selection
+  // Handle single file selection
   function handleFileSelect(input, nameElementId) {
     const file = input.files[0];
     const nameElement = document.getElementById(nameElementId);
@@ -1400,134 +1445,157 @@
     }
   }
 
-  // Handle multiple file selection (for bank statements)
-  function handleMultipleFileSelect(input, nameElementId) {
+  // ===== FIXED: Handle MULTIPLE bank statement files =====
+  function handleBankStatementsSelect(input) {
     const files = Array.from(input.files);
-    const nameElement = document.getElementById(nameElementId);
-    const uploadBox = input.closest('.upload-box');
+    const uploadBox = document.getElementById('bankStatementsBox');
+    const fileList = document.getElementById('bankStatementsList');
     
     if (files.length > 0) {
-      // Store all files as an array
-      uploadedFiles[input.id] = files;
+      // Add new files to the array (don't replace, add to existing)
+      bankStatementFiles = [...bankStatementFiles, ...files];
       
-      // Show file names
-      if (files.length === 1) {
-        nameElement.textContent = files[0].name;
-      } else {
-        nameElement.textContent = `${files.length} files selected: ${files.map(f => f.name).join(', ')}`;
-      }
+      // Mark box as having files
       uploadBox.classList.add('has-file');
-    } else {
-      nameElement.textContent = '';
-      uploadBox.classList.remove('has-file');
-      delete uploadedFiles[input.id];
+      
+      // Update the display
+      updateBankStatementsList();
+      
+      console.log(`✅ ${bankStatementFiles.length} bank statement file(s) selected`);
     }
   }
 
-  // Convert file to base64
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+  // ===== FIXED: Display list of selected bank statements =====
+  function updateBankStatementsList() {
+    const fileList = document.getElementById('bankStatementsList');
+    fileList.innerHTML = '';
+    
+    bankStatementFiles.forEach((file, index) => {
+      const fileItem = document.createElement('div');
+      fileItem.className = 'file-item';
+      fileItem.innerHTML = `
+        <div class="file-item-name">📄 ${file.name}</div>
+        <button type="button" class="remove-file" onclick="removeBankStatement(${index})">Remove</button>
+      `;
+      fileList.appendChild(fileItem);
     });
   }
 
-  // Handle form submission
+  // ===== FIXED: Remove individual bank statement =====
+  function removeBankStatement(index) {
+    bankStatementFiles.splice(index, 1);
+    updateBankStatementsList();
+    
+    if (bankStatementFiles.length === 0) {
+      document.getElementById('bankStatementsBox').classList.remove('has-file');
+    }
+    
+    console.log(`📄 Bank statement removed. ${bankStatementFiles.length} remaining`);
+  }
+
+  // ===== FIXED: Form submission with proper FormData =====
   async function handleSubmit(event) {
     event.preventDefault();
     
-    // Check if at least bank statements are uploaded
-    if (!uploadedFiles || Object.keys(uploadedFiles).length === 0 || !uploadedFiles['bankStatements']) {
-      alert('Please upload your bank statements (required for credit assessment)');
+    // Validate bank statements
+    if (bankStatementFiles.length === 0) {
+      alert('Please upload at least one bank statement (required for credit assessment)');
       return;
     }
 
+    console.log('🚀 Starting form submission...');
+    console.log(`📊 Bank statements to upload: ${bankStatementFiles.length}`);
+    
     // Show loading overlay
     document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('submitBtn').disabled = true;
 
     try {
-      // Get form data
-      const formData = {
-        firstname: document.getElementById('firstname').value,
-        lastname: document.getElementById('lastname').value,
-        email: document.getElementById('email').value,
-        mobile: document.getElementById('mobile').value,
-        company: document.getElementById('company').value,
-        industry: document.getElementById('industry').value,
-        revenue: document.getElementById('revenue').value,
-        purpose: document.getElementById('purpose').value
-      };
-
-      // Convert files to base64
-      const documents = {};
-      for (const [key, fileOrFiles] of Object.entries(uploadedFiles)) {
-        if (Array.isArray(fileOrFiles)) {
-          // Handle multiple files (bank statements)
-          documents[key] = [];
-          for (let i = 0; i < fileOrFiles.length; i++) {
-            const file = fileOrFiles[i];
-            documents[key].push({
-              filename: file.name,
-              content: await fileToBase64(file),
-              type: file.type
-            });
-          }
-        } else {
-          // Handle single file
-          const file = fileOrFiles;
-          if (file) {
-            documents[key] = {
-              filename: file.name,
-              content: await fileToBase64(file),
-              type: file.type
-            };
-          }
-        }
+      // Create FormData (NOT JSON for file uploads)
+      const formData = new FormData();
+      
+      // Add form fields
+      formData.append('companyName', document.getElementById('company').value);
+      formData.append('contactName', document.getElementById('firstname').value + ' ' + document.getElementById('lastname').value);
+      formData.append('email', document.getElementById('email').value);
+      formData.append('mobile', document.getElementById('mobile').value);
+      formData.append('revenue', document.getElementById('revenue').value);
+      formData.append('requestedCredit', document.getElementById('revenue').value * 0.3); // 30% of revenue
+      formData.append('creditPeriod', 12); // Default 12 months
+      
+      console.log('✅ Form data added');
+      
+      // ===== FIXED: Add ALL bank statement files =====
+      bankStatementFiles.forEach((file, index) => {
+        formData.append('bankStatements', file);
+        console.log(`  📄 Added bank statement ${index + 1}: ${file.name}`);
+      });
+      
+      // Add other documents
+      if (uploadedFiles['commercialReg']) {
+        formData.append('tradeLicense', uploadedFiles['commercialReg']);
+        console.log('  📄 Added commercial registration');
       }
-
-      // Send to Azure Function
+      
+      if (uploadedFiles['taxCard']) {
+        formData.append('taxCard', uploadedFiles['taxCard']);
+        console.log('  📄 Added tax card');
+      }
+      
+      if (uploadedFiles['nationalId']) {
+        formData.append('nationalId', uploadedFiles['nationalId']);
+        console.log('  📄 Added national ID');
+      }
+      
+      console.log('📤 Sending request to Azure Function...');
+      
+      // ===== FIXED: Send as FormData (not JSON) =====
       const response = await fetch(AZURE_FUNCTION_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          documents: documents
-        })
+        body: formData  // Send FormData directly, NO headers needed
       });
+
+      console.log(`📥 Response received: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Server response:', errorText);
+        console.error('❌ Server response:', errorText);
         throw new Error(`Server error: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log('✅ Response data:', result);
       
       // Hide loading overlay
       document.getElementById('loadingOverlay').classList.remove('active');
+      document.getElementById('submitBtn').disabled = false;
       
       // Show results
       displayResults(result);
 
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Error:', error);
       document.getElementById('loadingOverlay').classList.remove('active');
-      alert('Error processing your request. Please try again or contact support.');
+      document.getElementById('submitBtn').disabled = false;
+      alert('Error processing your request. Please try again or contact support.\n\nError: ' + error.message);
     }
   }
 
-  // Display results in modal - FIXED VERSION
+  // Display results in modal
   function displayResults(result) {
-    const assessment = result.assessment || {};
-    const status = assessment.status || 'PENDING';
-    const isApproved = status === 'APPROVED';
-    const isUnderReview = status === 'UNDER_REVIEW';
+    console.log('📊 Displaying results:', result);
+    
+    const assessment = result.assessment || result.ai_assessment || '';
+    const applicationId = result.application_id;
+    const bankAnalysis = result.bank_analysis;
+    const revenueDiscrepancy = result.revenue_discrepancy;
+    const verifiedRevenue = result.verified_revenue;
     
     let html = '';
+    
+    // Check if approved
+    const isApproved = assessment.toLowerCase().includes('approved') && !assessment.toLowerCase().includes('under review');
+    const isUnderReview = assessment.toLowerCase().includes('under review');
     
     // Decision banner
     if (isApproved) {
@@ -1553,68 +1621,64 @@
       `;
     }
 
-    // Show explanation if available
-    if (assessment.explanation) {
+    // Show AI assessment
+    if (assessment) {
       html += `
         <div class="result-item">
           <h4>Assessment Details</h4>
-          <p>${escapeHtml(assessment.explanation)}</p>
+          <p style="white-space: pre-wrap;">${escapeHtml(assessment)}</p>
         </div>
       `;
     }
 
-    // Credit details (if approved)
-    if (isApproved && assessment.credit_limit) {
+    // Bank analysis details
+    if (bankAnalysis && Array.isArray(bankAnalysis) && bankAnalysis.length > 0) {
       html += `
         <div class="result-item">
-          <h4>Approved Credit Limit</h4>
-          <p style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">
-            EGP ${Number(assessment.credit_limit).toLocaleString()}
-          </p>
-        </div>
+          <h4>✅ Bank Statement Analysis Complete</h4>
+          <p><strong>${bankAnalysis.length} bank statement(s) analyzed</strong></p>
       `;
       
-      if (assessment.term || assessment.tenor_months) {
+      if (verifiedRevenue) {
+        html += `<p><strong>Verified Annual Revenue:</strong> ${Number(verifiedRevenue).toLocaleString()} EGP</p>`;
+      }
+      
+      if (revenueDiscrepancy) {
         html += `
-          <div class="result-item">
-            <h4>Repayment Terms</h4>
-            <p><strong>Tenor:</strong> ${assessment.term || assessment.tenor_months} months</p>
-            ${assessment.interest_rate ? `<p><strong>Interest Rate:</strong> ${assessment.interest_rate}% per month</p>` : ''}
-          </div>
+          <p style="color: #dc3545; font-weight: 600;">
+            ⚠️ Revenue discrepancy detected - Manual review required
+          </p>
         `;
       }
-    }
-
-    // Bank analysis warning
-    if (result.bank_analysis && result.bank_analysis.warning) {
+      
+      html += `</div>`;
+    } else if (bankAnalysis === null) {
       html += `
         <div class="result-item" style="background: #fff3cd; border-left: 4px solid #ffc107;">
-          <h4>⚠️ Bank Statement Analysis</h4>
-          <p>${escapeHtml(result.bank_analysis.warning)}</p>
+          <h4>⏳ Bank Statement Analysis Pending</h4>
+          <p>Bank statements will be reviewed manually by our team.</p>
         </div>
       `;
     }
 
     // Application ID
-    if (result.application_id) {
+    if (applicationId) {
       html += `
         <div class="result-item">
           <h4>Application Reference</h4>
-          <p><strong>Application ID:</strong> ${result.application_id}</p>
+          <p><strong>Application ID:</strong> ${applicationId}</p>
         </div>
       `;
     }
 
     // Next steps
-    const formData = {
-      email: document.getElementById('email').value,
-      mobile: document.getElementById('mobile').value
-    };
+    const email = document.getElementById('email').value;
+    const mobile = document.getElementById('mobile').value;
     
     html += `
       <div class="result-item">
         <h4>Next Steps</h4>
-        <p>Our team will contact you at <strong>${formData.email}</strong> or <strong>${formData.mobile}</strong> within 24 hours to finalize your application and discuss supplier payment arrangements.</p>
+        <p>Our team will contact you at <strong>${email}</strong> or <strong>${mobile}</strong> within 24-48 hours to finalize your application and discuss supplier payment arrangements.</p>
       </div>
     `;
 
@@ -1625,11 +1689,20 @@
   // Close results modal
   function closeResults() {
     document.getElementById('resultsModal').classList.remove('active');
+    
     // Reset form
     document.getElementById('creditForm').reset();
+    
+    // Reset file arrays
+    bankStatementFiles = [];
     uploadedFiles = {};
+    
+    // Clear file displays
     document.querySelectorAll('.file-name').forEach(el => el.textContent = '');
+    document.getElementById('bankStatementsList').innerHTML = '';
     document.querySelectorAll('.upload-box').forEach(box => box.classList.remove('has-file'));
+    
+    console.log('✅ Form reset');
   }
 
   // ========== CHAT FUNCTIONALITY ==========
