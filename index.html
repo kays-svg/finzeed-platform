@@ -1522,50 +1522,64 @@
     document.getElementById('submitBtn').disabled = true;
 
     try {
-      // Create FormData (NOT JSON for file uploads)
-      const formData = new FormData();
+      // Convert files to base64 for submission (prevents caching issues)
+      console.log('📦 Converting files to base64...');
       
-      // Add form fields - MATCH BACKEND FIELD NAMES
-      formData.append('company', document.getElementById('company').value);
-      formData.append('firstname', document.getElementById('firstname').value);
-      formData.append('lastname', document.getElementById('lastname').value);
-      formData.append('email', document.getElementById('email').value);
-      formData.append('mobile', document.getElementById('mobile').value);
-      formData.append('revenue', document.getElementById('revenue').value);
-      formData.append('industry', document.getElementById('industry').value);
-      formData.append('purpose', document.getElementById('purpose').value || '');
+      const documents = {};
       
-      console.log('✅ Form data added');
-      
-      // ===== FIXED: Add ALL bank statement files =====
-      // Backend checks for both 'bank_statements' and 'bankStatements'
-      bankStatementFiles.forEach((file, index) => {
-        formData.append('bankStatements', file);
-        console.log(`  📄 Added bank statement ${index + 1}: ${file.name}`);
-      });
-      
-      // Add other documents (these are optional)
-      if (uploadedFiles['commercialReg']) {
-        formData.append('commercialReg', uploadedFiles['commercialReg']);
-        console.log('  📄 Added commercial registration');
+      // Convert bank statements to base64
+      if (bankStatementFiles.length > 0) {
+        documents.bank_statements = [];  // Match backend: 'bank_statements' not 'bankStatements'
+        for (let i = 0; i < bankStatementFiles.length; i++) {
+          const file = bankStatementFiles[i];
+          const base64 = await fileToBase64(file);
+          documents.bank_statements.push({
+            filename: file.name,
+            content: base64,
+            type: file.type,
+            size: file.size
+          });
+          console.log(`  ✅ Converted: ${file.name} (${file.size} bytes)`);
+        }
       }
       
-      if (uploadedFiles['taxCard']) {
-        formData.append('taxCard', uploadedFiles['taxCard']);
-        console.log('  📄 Added tax card');
+      // Convert other documents to base64
+      for (const [key, file] of Object.entries(uploadedFiles)) {
+        if (file) {
+          const base64 = await fileToBase64(file);
+          documents[key] = {
+            filename: file.name,
+            content: base64,
+            type: file.type,
+            size: file.size
+          };
+          console.log(`  ✅ Converted: ${file.name}`);
+        }
       }
       
-      if (uploadedFiles['nationalId']) {
-        formData.append('nationalId', uploadedFiles['nationalId']);
-        console.log('  📄 Added national ID');
-      }
+      // Prepare JSON payload
+      const payload = {
+        company: document.getElementById('company').value,
+        firstname: document.getElementById('firstname').value,
+        lastname: document.getElementById('lastname').value,
+        email: document.getElementById('email').value,
+        mobile: document.getElementById('mobile').value,
+        revenue: document.getElementById('revenue').value,
+        industry: document.getElementById('industry').value,
+        purpose: document.getElementById('purpose').value || '',
+        documents: documents
+      };
       
+      console.log('✅ Form data prepared (JSON with base64 files)');
       console.log('📤 Sending request to Azure Function...');
       
-      // ===== FIXED: Send as FormData (not JSON) =====
+      // Send as JSON with base64-encoded files
       const response = await fetch(AZURE_FUNCTION_URL, {
         method: 'POST',
-        body: formData  // Send FormData directly, NO headers needed
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
       });
 
       console.log(`📥 Response received: ${response.status}`);
