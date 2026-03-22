@@ -3,82 +3,121 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Finzeed – SME Working Capital & Supplier Marketplace</title>
+  <meta name="theme-color" content="#0a7c1a" />
+  <title>Finzeed - SME Working Capital & Supplier Marketplace</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --primary: #05690f;
-      --accent: #00a5b5;
-      --bg: #f3f8f4;
+      --primary: #0a7c1a;
+      --primary-dark: #065c10;
+      --primary-light: #e6f5e8;
+      --primary-glow: rgba(10, 124, 26, 0.15);
+      --accent: #0ea5e9;
+      --bg: #f6f9f7;
+      --bg-white: #ffffff;
       --text-main: #0e1a11;
-      --text-muted: #4b5c51;
-      --card-radius: 18px;
-      --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.08);
+      --text-muted: #556b5e;
+      --text-light: #8a9b90;
+      --card-radius: 16px;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.08);
+      --shadow-xl: 0 24px 64px rgba(0,0,0,0.12);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+    }
 
     body {
-      font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* NAVBAR + TABS */
+    h1, h2, h3, h4 {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    }
+
+    /* ========== NAVBAR ========== */
     .navbar {
-      background: #fff;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1rem 2rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 0.85rem 2.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
       position: sticky;
       top: 0;
-      z-index: 50;
+      z-index: 100;
     }
 
     .logo-section {
       display: flex;
       align-items: center;
-      gap: 0.7rem;
+      gap: 0.6rem;
     }
 
     .logo-icon {
-      background: var(--primary);
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #10b530);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
       display: flex;
       justify-content: center;
       align-items: center;
       color: white;
-      font-weight: 700;
-      font-size: 1.1rem;
-      box-shadow: 0 6px 14px rgba(5, 105, 15, 0.4);
+      font-weight: 800;
+      font-size: 0.95rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      letter-spacing: -0.5px;
     }
 
     .logo-text {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--primary);
+      font-size: 1.35rem;
+      font-weight: 800;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .tabs {
       display: flex;
       align-items: center;
-      gap: 1.6rem;
-      font-size: 0.95rem;
-      color: #3a453f;
+      gap: 0.3rem;
     }
 
     .tabs span {
-      padding-bottom: 4px;
+      padding: 0.5rem 1rem;
       cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-radius: 8px;
+      transition: var(--transition);
+    }
+
+    .tabs span:hover {
+      background: var(--primary-light);
+      color: var(--primary);
     }
 
     .tabs span.active {
-      border-bottom: 2px solid var(--primary);
+      background: var(--primary-light);
       color: var(--primary);
       font-weight: 600;
     }
@@ -86,294 +125,352 @@
     .nav-actions {
       display: flex;
       align-items: center;
-      gap: 0.8rem;
+      gap: 0.6rem;
     }
 
     .nav-actions button {
-      padding: 0.55rem 1.2rem;
-      border-radius: 30px;
+      padding: 0.55rem 1.3rem;
+      border-radius: 10px;
       border: none;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       cursor: pointer;
       font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      transition: var(--transition);
     }
 
     .btn-outline {
-      background: white;
-      border: 1px solid #cfd8d2;
+      background: transparent;
+      border: 1.5px solid #d4ddd7;
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
     }
 
     .btn-primary {
       background: var(--primary);
       color: white;
-      box-shadow: 0 6px 14px rgba(5, 105, 15, 0.4);
+      box-shadow: 0 4px 12px rgba(10, 124, 26, 0.3);
     }
 
-    /* PAGE SECTIONS (TABS) */
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 6px 20px rgba(10, 124, 26, 0.4);
+      transform: translateY(-1px);
+    }
+
+    /* ========== SECTIONS ========== */
     .section {
       display: none;
-      padding: 3rem 2.4rem;
-      max-width: 1120px;
-      margin: 0 auto;
     }
 
     .section.active {
       display: block;
     }
 
-    /* HOME / HERO */
-    .hero {
-      display: flex;
-      gap: 2rem;
-      align-items: center;
-      flex-wrap: wrap;
+    .section-inner {
+      padding: 3.5rem 2.5rem;
+      max-width: 1140px;
+      margin: 0 auto;
     }
 
-    .hero-left {
-      flex: 1.2 1 260px;
-      min-width: 260px;
+    /* ========== HERO ========== */
+    .hero-section {
+      background: linear-gradient(135deg, #041f08 0%, #0a3d14 40%, #0d5a1a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(16, 181, 48, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-section::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 5rem 2.5rem 4rem;
+      text-align: center;
     }
 
     .badge {
-      background: #e8f5ea;
-      padding: 0.4rem 1rem;
-      border-radius: 40px;
-      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 0.45rem 1.2rem;
+      border-radius: 50px;
+      font-size: 0.78rem;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      color: var(--primary);
+      gap: 8px;
+      color: #a3e6b0;
       font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
     }
 
     .hero-title {
-      font-size: 2.6rem;
-      font-weight: 700;
-      margin-top: 1rem;
-      color: var(--text-main);
+      font-size: 3.4rem;
+      font-weight: 800;
+      margin-top: 1.5rem;
+      color: #ffffff;
+      line-height: 1.15;
+      max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
+      letter-spacing: -0.5px;
     }
 
     .hero-title span {
-      color: var(--primary);
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .hero-sub {
-      font-size: 1.05rem;
-      color: var(--text-muted);
-      margin-top: 1rem;
-      line-height: 1.55;
-      max-width: 38rem;
+      font-size: 1.12rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 1.2rem;
+      line-height: 1.7;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .hero-buttons {
-      margin-top: 1.6rem;
+      margin-top: 2.2rem;
       display: flex;
       gap: 1rem;
+      justify-content: center;
       flex-wrap: wrap;
     }
 
     .big-btn {
-      padding: 1rem 1.6rem;
+      padding: 0.95rem 2rem;
       font-size: 1rem;
-      border-radius: 40px;
+      border-radius: 12px;
       border: none;
       cursor: pointer;
       font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      transition: var(--transition);
     }
 
     .big-primary {
-      background: var(--primary);
+      background: linear-gradient(135deg, #10b530, #0a7c1a);
       color: white;
-      box-shadow: 0 8px 20px rgba(5, 105, 15, 0.35);
+      box-shadow: 0 8px 24px rgba(16, 181, 48, 0.35);
+    }
+
+    .big-primary:hover {
+      box-shadow: 0 12px 32px rgba(16, 181, 48, 0.5);
+      transform: translateY(-2px);
     }
 
     .big-outline {
-      background: white;
-      border: 1px solid #d6e3da;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      color: white;
+      backdrop-filter: blur(8px);
     }
 
-    .hero-notes {
-      margin-top: 1.2rem;
-      font-size: 0.92rem;
-      color: #506157;
+    .big-outline:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .hero-trust {
       display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .snapshot-card {
-      flex: 1 1 260px;
-      background: white;
-      padding: 2rem;
-      border-radius: 20px;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid #e4ebe6;
-      min-width: 260px;
-    }
-
-    .snapshot-title {
-      font-size: 1rem;
-      color: var(--primary);
-      font-weight: 600;
-      margin-bottom: 1rem;
-    }
-
-    .snapshot-value {
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--primary);
-      margin-bottom: 0.4rem;
-    }
-
-    .snapshot-subtext {
-      font-size: 0.9rem;
-      color: #4c5f52;
-      border-bottom: 1px solid #e5ece8;
-      padding-bottom: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .snapshot-rows {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 1rem;
-      gap: 1rem;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 3rem;
       flex-wrap: wrap;
     }
 
-    .row-label {
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       font-size: 0.85rem;
-      color: #67756d;
-    }
-
-    .row-value {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #0f2216;
-    }
-
-    .tags {
-      display: flex;
-      gap: 0.6rem;
-      flex-wrap: wrap;
-      margin-top: 1rem;
-    }
-
-    .tag {
-      background: #eef6f0;
-      padding: 0.35rem 0.8rem;
-      border-radius: 30px;
-      font-size: 0.78rem;
-      color: #0e331c;
+      color: rgba(255, 255, 255, 0.55);
       font-weight: 500;
     }
 
-    /* SECTION TITLES */
-    .section h2 {
-      font-size: 1.7rem;
-      margin-bottom: 0.5rem;
+    .trust-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
     }
 
-    .section p.lead {
-      font-size: 0.98rem;
+
+    /* ========== SECTION TITLES ========== */
+    .section-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .section-header h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.3px;
+    }
+
+    .section-header p {
+      font-size: 1.02rem;
       color: var(--text-muted);
-      max-width: 42rem;
-      margin-bottom: 1.4rem;
+      max-width: 500px;
+      margin: 0.6rem auto 0;
+      line-height: 1.6;
     }
 
-    /* HOW IT WORKS */
+    /* ========== HOW IT WORKS ========== */
     .steps-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
     }
 
     .step-card {
-      background: #fff;
+      background: var(--bg-white);
       border-radius: var(--card-radius);
-      padding: 1rem 1.1rem;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid #e0ebe4;
-      font-size: 0.9rem;
+      padding: 2rem 1.5rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .step-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-light);
     }
 
     .step-number {
-      width: 26px;
-      height: 26px;
-      border-radius: 999px;
-      border: 1px solid var(--primary);
-      color: var(--primary);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), #10b530);
+      color: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.8rem;
-      margin-bottom: 0.55rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
     }
 
     .step-card h3 {
-      margin: 0 0 0.35rem;
-      font-size: 1rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
     }
 
     .step-card p {
-      margin: 0;
       font-size: 0.9rem;
       color: var(--text-muted);
+      line-height: 1.6;
     }
 
-    /* WHY FINZEED */
+    /* ========== WHY FINZEED ========== */
     .value-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
     }
 
     .value-card {
-      background: #fff;
+      background: var(--bg-white);
       border-radius: var(--card-radius);
-      padding: 1.05rem 1.05rem 1.15rem;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid #e0ebe4;
-      font-size: 0.9rem;
+      padding: 2rem 1.5rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      transition: var(--transition);
+    }
+
+    .value-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-light);
     }
 
     .value-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      background: rgba(5, 105, 15, 0.08);
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary-light), #d1fae5);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 0.65rem;
-      font-size: 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
     }
 
     .value-card h3 {
-      margin: 0 0 0.35rem;
-      font-size: 1rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
     }
 
     .value-card p {
-      margin: 0;
       font-size: 0.9rem;
       color: var(--text-muted);
+      line-height: 1.6;
     }
 
-    /* SUPPLIERS MARKETPLACE */
+    /* ========== SUPPLIERS ========== */
     .suppliers-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
     }
 
     .supplier-card {
-      background: #ffffff;
+      background: var(--bg-white);
       border-radius: var(--card-radius);
-      padding: 1rem 1rem 1.1rem;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(15, 35, 52, 0.04);
-      font-size: 0.86rem;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .supplier-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
     }
 
     .supplier-header {
@@ -381,92 +478,103 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 0.7rem;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.6rem;
     }
 
     .supplier-name {
-      font-weight: 600;
-      font-size: 0.95rem;
+      font-weight: 700;
+      font-size: 1rem;
     }
 
     .supplier-category {
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       color: var(--text-muted);
+      margin-top: 0.15rem;
     }
 
     .supplier-tag {
       font-size: 0.72rem;
-      border-radius: 999px;
-      padding: 0.15rem 0.55rem;
-      background: #e7f6ea;
+      border-radius: 6px;
+      padding: 0.25rem 0.65rem;
+      background: var(--primary-light);
       color: var(--primary);
       font-weight: 600;
       white-space: nowrap;
     }
 
     .supplier-meta {
-      font-size: 0.8rem;
+      font-size: 0.84rem;
       color: var(--text-muted);
-      margin-bottom: 0.5rem;
+      margin-bottom: 1rem;
+      flex: 1;
+      line-height: 1.5;
     }
 
     .supplier-cta {
-      border-radius: 999px;
+      border-radius: 10px;
       border: none;
-      padding: 0.45rem 0.8rem;
-      font-size: 0.8rem;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
-      background: linear-gradient(135deg, var(--primary), #089c20);
+      font-family: 'Inter', sans-serif;
+      background: var(--primary);
       color: #fff;
-      box-shadow: 0 6px 14px rgba(5, 105, 15, 0.4);
+      transition: var(--transition);
+      width: 100%;
     }
 
-    /* REQUEST CREDIT – FORM */
+    .supplier-cta:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(10, 124, 26, 0.3);
+    }
+
+    /* ========== REQUEST CREDIT FORM ========== */
     .request-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      grid-template-columns: 1.3fr 1fr;
       gap: 2rem;
       align-items: flex-start;
-      flex-wrap: wrap;
     }
 
     .request-form-card {
-      background: #fff;
+      background: var(--bg-white);
       border-radius: var(--card-radius);
-      padding: 1.5rem 1.6rem;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid #e0ebe4;
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      border-top: 3px solid var(--primary);
     }
 
     .request-form-card h3 {
-      margin-top: 0;
-      margin-bottom: 0.8rem;
+      margin-bottom: 0.3rem;
+      font-size: 1.15rem;
+      font-weight: 700;
     }
 
-    .request-form-card p {
+    .request-form-card > p {
       font-size: 0.9rem;
       color: var(--text-muted);
-      margin-top: 0;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
     }
 
     .form-grid-two {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.9rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
     }
 
     .form-group {
-      margin-bottom: 0.9rem;
-      font-size: 0.9rem;
+      margin-bottom: 1rem;
     }
 
     .form-group label {
       display: block;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.35rem;
       font-size: 0.85rem;
-      color: #425349;
+      font-weight: 500;
+      color: var(--text-main);
     }
 
     input[type="text"],
@@ -477,12 +585,22 @@
     textarea {
       width: 100%;
       border-radius: 10px;
-      border: 1px solid #d5e3d8;
-      padding: 0.55rem 0.75rem;
+      border: 1.5px solid #dce5df;
+      padding: 0.65rem 0.85rem;
       font-size: 0.9rem;
       outline: none;
-      font-family: inherit;
-      background: #f9fbfa;
+      font-family: 'Inter', sans-serif;
+      background: #fafcfb;
+      transition: var(--transition);
+      color: var(--text-main);
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+      background: white;
     }
 
     textarea {
@@ -492,39 +610,40 @@
 
     .upload-row {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.8rem;
-      margin-bottom: 0.6rem;
-      font-size: 0.85rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 0.8rem;
     }
 
     .upload-box {
       border-radius: 12px;
       border: 2px dashed #cbd8cf;
-      padding: 0.7rem 0.8rem;
-      background: #f5faf6;
+      padding: 1rem;
+      background: #f8fbf9;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: var(--transition);
       position: relative;
     }
 
     .upload-box:hover {
       border-color: var(--primary);
-      background: #e8f5ea;
+      background: var(--primary-light);
     }
 
     .upload-box.has-file {
       border-color: var(--primary);
-      background: #e8f5ea;
+      background: var(--primary-light);
+      border-style: solid;
     }
 
     .upload-box p {
       margin: 0 0 0.3rem;
-      font-size: 0.86rem;
+      font-size: 0.88rem;
+      font-weight: 600;
     }
 
     .upload-box small {
-      font-size: 0.75rem;
+      font-size: 0.77rem;
       color: var(--text-muted);
     }
 
@@ -533,58 +652,125 @@
     }
 
     .file-name {
-      font-size: 0.75rem;
+      font-size: 0.77rem;
       color: var(--primary);
-      margin-top: 0.3rem;
+      margin-top: 0.4rem;
       font-weight: 600;
+      word-break: break-word;
+    }
+
+    .file-list {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.45rem 0.65rem;
+      background: rgba(10, 124, 26, 0.06);
+      border-radius: 8px;
+      font-size: 0.77rem;
+    }
+
+    .file-item-name {
+      color: var(--primary);
+      font-weight: 500;
+      flex: 1;
+      margin-right: 0.5rem;
+      word-break: break-word;
+    }
+
+    .remove-file {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .remove-file:hover {
+      background: #dc2626;
     }
 
     .submit-row {
-      margin-top: 1.1rem;
+      margin-top: 1.5rem;
       display: flex;
-      gap: 0.8rem;
+      gap: 1rem;
       align-items: center;
       flex-wrap: wrap;
     }
 
+    .submit-row .big-btn {
+      box-shadow: 0 4px 16px rgba(10, 124, 26, 0.3);
+    }
+
     .helper-text {
-      font-size: 0.78rem;
-      color: var(--text-muted);
+      font-size: 0.8rem;
+      color: var(--text-light);
     }
 
     .request-side-card {
-      background: #e8f5ea;
+      background: linear-gradient(135deg, #f0fdf4, #e6f5e8);
       border-radius: var(--card-radius);
-      padding: 1.4rem 1.5rem;
+      padding: 1.8rem;
       border: 1px solid #c5e0cf;
-      font-size: 0.9rem;
-      color: #21402b;
+      position: sticky;
+      top: 80px;
     }
 
     .request-side-card h3 {
-      margin-top: 0;
-      margin-bottom: 0.7rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      color: var(--primary-dark);
+    }
+
+    .request-side-card h3:nth-of-type(2) {
+      margin-top: 1.5rem;
     }
 
     .request-side-card ul {
-      padding-left: 1.1rem;
-      margin: 0.4rem 0 0.8rem;
-      font-size: 0.88rem;
+      padding-left: 0;
+      list-style: none;
+      margin: 0;
     }
 
-    .request-side-card li + li {
-      margin-top: 0.25rem;
+    .request-side-card li {
+      font-size: 0.9rem;
+      color: #2d5a3a;
+      padding: 0.4rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+      line-height: 1.5;
     }
 
-    /* Loading Spinner */
+    .request-side-card li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.7rem;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      opacity: 0.5;
+    }
+
+    /* ========== LOADING SPINNER ========== */
     .loading-overlay {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
       z-index: 9999;
       justify-content: center;
       align-items: center;
@@ -596,20 +782,30 @@
 
     .loading-content {
       background: white;
-      padding: 2rem;
-      border-radius: 16px;
+      padding: 2.5rem;
+      border-radius: 20px;
       text-align: center;
-      max-width: 400px;
+      max-width: 420px;
+      box-shadow: var(--shadow-xl);
+    }
+
+    .loading-content h3 {
+      margin-bottom: 0.5rem;
+    }
+
+    .loading-content p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
     }
 
     .spinner {
-      border: 4px solid #f3f3f3;
+      border: 4px solid #e5e7eb;
       border-top: 4px solid var(--primary);
       border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
+      width: 48px;
+      height: 48px;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.2rem;
     }
 
     @keyframes spin {
@@ -617,15 +813,13 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* Results Modal */
+    /* ========== RESULTS MODAL ========== */
     .results-modal {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
       z-index: 9999;
       justify-content: center;
       align-items: center;
@@ -644,6 +838,7 @@
       width: 100%;
       max-height: 90vh;
       overflow-y: auto;
+      box-shadow: var(--shadow-xl);
     }
 
     .results-header {
@@ -654,38 +849,58 @@
     }
 
     .results-header h2 {
-      margin: 0;
+      font-size: 1.3rem;
     }
 
     .close-btn {
-      background: none;
+      background: #f3f4f6;
       border: none;
-      font-size: 1.5rem;
+      font-size: 1.2rem;
       cursor: pointer;
       color: #666;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .close-btn:hover {
+      background: #e5e7eb;
     }
 
     .decision-approved {
-      background: #e8f5ea;
-      color: var(--primary);
-      padding: 1rem;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 1.2rem;
       border-radius: 12px;
       margin-bottom: 1.5rem;
       text-align: center;
     }
 
     .decision-rejected {
-      background: #fee;
-      color: #c00;
-      padding: 1rem;
+      background: #fef2f2;
+      color: #b91c1c;
+      padding: 1.2rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .decision-pending {
+      background: #fffbeb;
+      color: #92400e;
+      padding: 1.2rem;
       border-radius: 12px;
       margin-bottom: 1.5rem;
       text-align: center;
     }
 
     .result-item {
-      padding: 1rem;
-      background: #f9fbfa;
+      padding: 1.2rem;
+      background: #f9fafb;
       border-radius: 12px;
       margin-bottom: 1rem;
     }
@@ -693,65 +908,74 @@
     .result-item h4 {
       margin: 0 0 0.5rem;
       color: var(--primary);
+      font-size: 0.95rem;
     }
 
     .result-item p {
-      margin: 0;
+      margin: 0.25rem 0;
       color: var(--text-main);
+      font-size: 0.9rem;
     }
 
-    /* CHAT WIDGET */
+    /* ========== CHAT WIDGET ========== */
     .chat-widget {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
+      bottom: 24px;
+      right: 24px;
       z-index: 1000;
     }
 
     .chat-button {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), #089c20);
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--primary), #10b530);
       color: white;
       border: none;
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       cursor: pointer;
-      box-shadow: 0 8px 20px rgba(5, 105, 15, 0.4);
+      box-shadow: 0 8px 24px rgba(10, 124, 26, 0.35);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s ease;
+      transition: var(--transition);
     }
 
     .chat-button:hover {
-      transform: scale(1.1);
-      box-shadow: 0 10px 25px rgba(5, 105, 15, 0.5);
+      transform: scale(1.08);
+      box-shadow: 0 12px 32px rgba(10, 124, 26, 0.45);
     }
 
     .chat-window {
       display: none;
       position: fixed;
-      bottom: 90px;
-      right: 20px;
+      bottom: 92px;
+      right: 24px;
       width: 380px;
-      height: 550px;
+      height: 520px;
       background: white;
       border-radius: 20px;
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--shadow-xl);
       flex-direction: column;
       overflow: hidden;
       z-index: 1001;
+      border: 1px solid rgba(0, 0, 0, 0.06);
     }
 
     .chat-window.active {
       display: flex;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .chat-header {
-      background: linear-gradient(135deg, var(--primary), #089c20);
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
       color: white;
-      padding: 1.2rem;
+      padding: 1.1rem 1.2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -759,14 +983,15 @@
 
     .chat-header h3 {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      font-weight: 600;
     }
 
     .chat-close {
-      background: none;
+      background: rgba(255, 255, 255, 0.15);
       border: none;
       color: white;
-      font-size: 1.5rem;
+      font-size: 1.2rem;
       cursor: pointer;
       padding: 0;
       width: 30px;
@@ -774,12 +999,12 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
-      transition: background 0.2s;
+      border-radius: 8px;
+      transition: var(--transition);
     }
 
     .chat-close:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.25);
     }
 
     .chat-messages {
@@ -790,25 +1015,20 @@
     }
 
     .chat-message {
-      margin-bottom: 1rem;
+      margin-bottom: 0.8rem;
       display: flex;
       flex-direction: column;
     }
 
-    .chat-message.user {
-      align-items: flex-end;
-    }
-
-    .chat-message.bot {
-      align-items: flex-start;
-    }
+    .chat-message.user { align-items: flex-end; }
+    .chat-message.bot { align-items: flex-start; }
 
     .message-bubble {
-      max-width: 75%;
-      padding: 0.75rem 1rem;
-      border-radius: 16px;
-      font-size: 0.9rem;
-      line-height: 1.4;
+      max-width: 78%;
+      padding: 0.7rem 1rem;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      line-height: 1.5;
     }
 
     .chat-message.user .message-bubble {
@@ -821,17 +1041,18 @@
       background: white;
       color: var(--text-main);
       border-bottom-left-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0, 0, 0, 0.04);
     }
 
     .message-time {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      margin-top: 0.3rem;
+      font-size: 0.68rem;
+      color: var(--text-light);
+      margin-top: 0.25rem;
     }
 
     .chat-input-area {
-      padding: 1rem;
+      padding: 0.8rem 1rem;
       background: white;
       border-top: 1px solid #e5e7eb;
       display: flex;
@@ -840,94 +1061,442 @@
 
     .chat-input {
       flex: 1;
-      border: 1px solid #d1d5db;
-      border-radius: 20px;
-      padding: 0.75rem 1rem;
-      font-size: 0.9rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-size: 0.88rem;
       outline: none;
-      font-family: inherit;
+      font-family: 'Inter', sans-serif;
+      transition: var(--transition);
     }
 
     .chat-input:focus {
       border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
     }
 
     .chat-send {
       background: var(--primary);
       color: white;
       border: none;
-      border-radius: 50%;
+      border-radius: 12px;
       width: 42px;
       height: 42px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.2rem;
-      transition: all 0.2s;
+      font-size: 1.1rem;
+      transition: var(--transition);
     }
 
     .chat-send:hover {
-      background: #047a0d;
+      background: var(--primary-dark);
       transform: scale(1.05);
     }
 
     .chat-send:disabled {
-      background: #9ca3af;
+      background: #d1d5db;
       cursor: not-allowed;
-      transform: scale(1);
+      transform: none;
     }
 
     .typing-indicator {
       display: flex;
       gap: 4px;
-      padding: 0.75rem 1rem;
+      padding: 0.7rem 1rem;
       background: white;
-      border-radius: 16px;
+      border-radius: 14px;
       width: fit-content;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0, 0, 0, 0.04);
     }
 
     .typing-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--primary);
       animation: typing 1.4s infinite;
     }
 
-    .typing-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .typing-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
     @keyframes typing {
-      0%, 60%, 100% {
-        opacity: 0.3;
-        transform: translateY(0);
+      0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-6px); }
+    }
+
+    /* ========== FOOTER ========== */
+    .footer {
+      background: #071a0c;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 3rem 2.5rem 2rem;
+      margin-top: 0;
+    }
+
+    .footer-inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-brand {
+      max-width: 320px;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .footer-logo .logo-icon {
+      width: 32px;
+      height: 32px;
+      font-size: 0.8rem;
+      border-radius: 8px;
+    }
+
+    .footer-logo .logo-text {
+      font-size: 1.15rem;
+      -webkit-text-fill-color: white;
+    }
+
+    .footer-brand p {
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 3rem;
+    }
+
+    .footer-col h4 {
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .footer-col a {
+      display: block;
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      font-size: 0.88rem;
+      padding: 0.25rem 0;
+      transition: var(--transition);
+    }
+
+    .footer-col a:hover {
+      color: #4ade80;
+    }
+
+    .footer-bottom {
+      max-width: 1140px;
+      margin: 2rem auto 0;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .footer-bottom span {
+      color: #4ade80;
+    }
+
+    /* ========== AUTH MODALS ========== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 9998;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: white;
+      border-radius: 20px;
+      padding: 2.2rem;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: var(--shadow-xl);
+      position: relative;
+    }
+
+    .modal-box h3 {
+      font-size: 1.3rem;
+      margin-bottom: 1.2rem;
+      text-align: center;
+    }
+
+    .modal-box .close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+    }
+
+    .modal-box .form-group {
+      margin-bottom: 0.9rem;
+    }
+
+    .modal-box .form-grid-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+
+    .form-error {
+      color: #dc2626;
+      font-size: 0.82rem;
+      margin-bottom: 0.8rem;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .modal-footer {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .modal-footer a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .modal-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========== PROFILE ========== */
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    .profile-card {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--primary), #10b530);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin-bottom: 1rem;
+    }
+
+    .profile-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .profile-email {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 1.2rem;
+    }
+
+    .profile-detail {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #f0f3f1;
+      font-size: 0.9rem;
+    }
+
+    .profile-detail-label {
+      color: var(--text-muted);
+    }
+
+    .profile-detail-value {
+      font-weight: 600;
+    }
+
+    .profile-actions {
+      margin-top: 1.2rem;
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .app-history {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .app-history h3 {
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .app-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .app-table th {
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      background: #f6f9f7;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .app-table td {
+      padding: 0.7rem 0.8rem;
+      border-bottom: 1px solid #f0f3f1;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-approved {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .status-review {
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .status-rejected {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state p {
+      margin-bottom: 1rem;
+    }
+
+    /* Navbar auth state */
+    .user-greeting {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      padding: 0.4rem 0.8rem;
+      border-radius: 10px;
+      transition: var(--transition);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .user-greeting:hover {
+      background: var(--primary-light);
+    }
+
+    .avatar-sm {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary), #10b530);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      .profile-grid {
+        grid-template-columns: 1fr;
       }
-      30% {
-        opacity: 1;
-        transform: translateY(-8px);
+      .modal-box .form-grid-two {
+        grid-template-columns: 1fr;
       }
     }
 
-    /* RESPONSIVE */
+    /* ========== ANIMATIONS ========== */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-content > * {
+      animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .hero-content > *:nth-child(2) { animation-delay: 0.1s; }
+    .hero-content > *:nth-child(3) { animation-delay: 0.2s; }
+    .hero-content > *:nth-child(4) { animation-delay: 0.3s; }
+    .hero-content > *:nth-child(5) { animation-delay: 0.4s; }
+    .hero-content > *:nth-child(6) { animation-delay: 0.5s; }
+
+    /* ========== RESPONSIVE ========== */
     @media (max-width: 960px) {
-      .hero {
-        flex-direction: column;
-        padding-top: 0;
-      }
       .request-layout {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: 1fr;
       }
       .steps-grid,
       .value-grid,
       .suppliers-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .hero-title {
+        font-size: 2.6rem;
+      }
+      .footer-inner {
+        flex-direction: column;
       }
     }
 
@@ -935,42 +1504,60 @@
       .navbar {
         flex-direction: column;
         gap: 0.8rem;
-        padding: 1rem 1.2rem;
+        padding: 0.8rem 1.2rem;
         align-items: flex-start;
       }
       .tabs {
         flex-wrap: wrap;
-        gap: 0.9rem;
+        gap: 0.3rem;
       }
-      .section {
-        padding: 2rem 1.4rem;
+      .tabs span {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.85rem;
+      }
+      .section-inner {
+        padding: 2.5rem 1.4rem;
+      }
+      .hero-content {
+        padding: 3rem 1.4rem 2.5rem;
       }
       .hero-title {
-        font-size: 2rem;
+        font-size: 2.1rem;
       }
       .hero-sub {
-        font-size: 0.95rem;
+        font-size: 1rem;
       }
       .steps-grid,
       .value-grid,
       .suppliers-grid {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: 1fr;
       }
       .upload-row {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: 1fr;
+      }
+      .form-grid-two {
+        grid-template-columns: 1fr;
       }
       .chat-window {
         width: calc(100% - 20px);
         right: 10px;
         left: 10px;
-        bottom: 80px;
-        height: calc(100vh - 100px);
+        bottom: 88px;
+        height: calc(100vh - 110px);
+      }
+      .footer-links {
+        gap: 2rem;
       }
     }
 
     @media (max-width: 480px) {
       .big-btn {
         width: 100%;
+      }
+      .hero-trust {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
       }
     }
   </style>
@@ -982,7 +1569,7 @@
   <div class="loading-content">
     <div class="spinner"></div>
     <h3>Analyzing your documents...</h3>
-    <p>Our AI is processing your information. This may take a moment.</p>
+    <p>Our AI is processing your bank statements and information. This may take 30-60 seconds.</p>
   </div>
 </div>
 
@@ -991,13 +1578,13 @@
   <div class="results-content">
     <div class="results-header">
       <h2>Credit Assessment Results</h2>
-      <button class="close-btn" onclick="closeResults()">×</button>
+      <button class="close-btn" onclick="closeResults()">&times;</button>
     </div>
     <div id="resultsBody"></div>
   </div>
 </div>
 
-<!-- NAVBAR + TABS -->
+<!-- NAVBAR -->
 <div class="navbar">
   <div class="logo-section">
     <div class="logo-icon">FZ</div>
@@ -1010,336 +1597,495 @@
     <span data-tab="why" onclick="openTab('why')">Why Finzeed</span>
     <span data-tab="suppliers" onclick="openTab('suppliers')">Suppliers</span>
     <span data-tab="request" onclick="openTab('request')">Request credit</span>
+    <span data-tab="profile" onclick="openTab('profile')" id="profileTab" style="display:none">My Profile</span>
   </div>
 
-  <div class="nav-actions">
-    <button class="btn-outline">Sign in</button>
+  <div class="nav-actions" id="navActions">
+    <button class="btn-outline" id="signInBtn" onclick="openModal('loginModal')">Sign in</button>
     <button class="btn-primary" onclick="openTab('request')">Request credit</button>
   </div>
 </div>
 
 <!-- HOME TAB -->
 <section id="home" class="section active">
-  <div class="hero">
-    <div class="hero-left">
-      <div class="badge">• SME WORKING-CAPITAL FINANCING</div>
+  <div class="hero-section">
+    <div class="hero-content">
+      <div class="badge">SME Working-Capital Financing</div>
 
       <div class="hero-title">
-        Flexible <span>credit lines</span> to pay your suppliers on time.
+        Flexible <span>credit lines</span> to pay your suppliers on time
       </div>
 
       <div class="hero-sub">
-        Finzeed helps manufacturers, traders and distributors secure working capital by paying their suppliers directly,
-        while you repay in smart instalments aligned with your cash flow.
+        Finzeed helps manufacturers, traders and distributors secure working capital by paying their suppliers directly, while you repay in smart instalments aligned with your cash flow.
       </div>
 
       <div class="hero-buttons">
         <button class="big-btn big-primary" onclick="openTab('request')">
           Request credit in 5 minutes
         </button>
-        <button class="big-btn big-outline">Book a live demo</button>
+        <button class="big-btn big-outline" onclick="openTab('how')">See how it works</button>
       </div>
 
-      <div class="hero-notes">
-        <div>⚡ <strong>Fast approvals.</strong> Decisions based on real transaction behaviour.</div>
-        <div>🤝 <strong>Suppliers paid</strong> in full, on time</div>
-        <div>📊 <strong>Clear instalment plan</strong> from day one</div>
-      </div>
-    </div>
-
-    <div class="snapshot-card">
-      <div class="snapshot-title">• Live snapshot (demo)</div>
-      <div class="snapshot-value">EGP 16,000,000</div>
-      <div class="snapshot-subtext">Total products and materials purchased via Finzeed</div>
-
-      <div class="snapshot-rows">
-        <div>
-          <div class="row-label">Active customers</div>
-          <div class="row-value">15</div>
+      <div class="hero-trust">
+        <div class="trust-item">
+          <div class="trust-icon">&#x1F916;</div>
+          AI-Powered Decisions
         </div>
-        <div>
-          <div class="row-label">Number of suppliers</div>
-          <div class="row-value" style="color:#05690f;">12</div>
+        <div class="trust-item">
+          <div class="trust-icon">&#x1F512;</div>
+          Bank-Grade Security
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">&#x26A1;</div>
+          5-Minute Application
         </div>
       </div>
 
-      <div class="tags">
-        <div class="tag">Manufacturing</div>
-        <div class="tag">Trading</div>
-        <div class="tag">Distribution</div>
-        <div class="tag">Working capital</div>
-      </div>
     </div>
   </div>
 </section>
 
 <!-- HOW IT WORKS TAB -->
 <section id="how" class="section">
-  <h2>How Finzeed works</h2>
-  <p class="lead">From onboarding to first supplier payment in three simple steps.</p>
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>How Finzeed works</h2>
+      <p>From onboarding to first supplier payment in three simple steps.</p>
+    </div>
 
-  <div class="steps-grid">
-    <div class="step-card">
-      <div class="step-number">1</div>
-      <h3>Apply & share your data</h3>
-      <p>Provide company details and securely share your bank statements. Our engine analyses inflows, outflows and behaviour.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-number">2</div>
-      <h3>Get a tailored credit line</h3>
-      <p>We set a limit and tenor that match your size, margins and seasonality. You see all terms clearly before you accept.</p>
-    </div>
-    <div class="step-card">
-      <div class="step-number">3</div>
-      <h3>Request supplier payments</h3>
-      <p>Submit invoices from approved suppliers. Finzeed pays them directly and you repay in monthly instalments.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <h3>Apply & share your data</h3>
+        <p>Provide company details and securely share your bank statements. Our engine analyses inflows, outflows and behaviour.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <h3>Get a tailored credit line</h3>
+        <p>We set a limit and tenor that match your size, margins and seasonality. You see all terms clearly before you accept.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <h3>Request supplier payments</h3>
+        <p>Submit invoices from approved suppliers. Finzeed pays them directly and you repay in monthly instalments.</p>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- WHY FINZEED TAB -->
 <section id="why" class="section">
-  <h2>Why SMEs choose Finzeed</h2>
-  <p class="lead">Designed around your supplier relationships and cash cycle, not long paperwork.</p>
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>Why SMEs choose Finzeed</h2>
+      <p>Designed around your supplier relationships and cash cycle, not long paperwork.</p>
+    </div>
 
-  <div class="value-grid">
-    <div class="value-card">
-      <div class="value-icon">⚡</div>
-      <h3>Fast, data-driven decisions</h3>
-      <p>Our AI engine reads your bank statements and transaction patterns to estimate a suitable credit limit within minutes.</p>
-    </div>
-    <div class="value-card">
-      <div class="value-icon">🧾</div>
-      <h3>Suppliers paid directly</h3>
-      <p>Finzeed pays your approved suppliers on your behalf. You focus on production, not chasing payment terms.</p>
-    </div>
-    <div class="value-card">
-      <div class="value-icon">📊</div>
-      <h3>Real-time credit dashboard</h3>
-      <p>Monitor your limits, upcoming cheques, past deals and payment performance from one simple dashboard.</p>
+    <div class="value-grid">
+      <div class="value-card">
+        <div class="value-icon">&#x26A1;</div>
+        <h3>Fast, data-driven decisions</h3>
+        <p>Our AI engine reads your bank statements and transaction patterns to estimate a suitable credit limit within minutes.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">&#x1F9FE;</div>
+        <h3>Suppliers paid directly</h3>
+        <p>Finzeed pays your approved suppliers on your behalf. You focus on production, not chasing payment terms.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon">&#x1F4CA;</div>
+        <h3>Real-time credit dashboard</h3>
+        <p>Monitor your limits, upcoming cheques, past deals and payment performance from one simple dashboard.</p>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- SUPPLIERS TAB -->
 <section id="suppliers" class="section">
-  <h2>Suppliers marketplace (demo)</h2>
-  <p class="lead">Browse a sample of verified suppliers. Real marketplace will show live suppliers integrated with Finzeed.</p>
-
-  <div class="suppliers-grid">
-    <div class="supplier-card">
-      <div class="supplier-header">
-        <div>
-          <div class="supplier-name">Nile Steel Trading Co.</div>
-          <div class="supplier-category">Steel & Metals · Cairo</div>
-        </div>
-        <div class="supplier-tag">Preferred</div>
-      </div>
-      <div class="supplier-meta">
-        Typical invoice size: EGP 150K – 500K · Payment terms: Cash / 30 days
-      </div>
-      <button class="supplier-cta" onclick="openTab('request')">
-        Request financing for this supplier
-      </button>
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>Suppliers marketplace</h2>
+      <p>Browse verified suppliers. Pay them through Finzeed with your approved credit line.</p>
     </div>
 
-    <div class="supplier-card">
-      <div class="supplier-header">
-        <div>
-          <div class="supplier-name">GreenPack Packaging</div>
-          <div class="supplier-category">Packaging · 10th of Ramadan</div>
+    <div class="suppliers-grid">
+      <div class="supplier-card">
+        <div class="supplier-header">
+          <div>
+            <div class="supplier-name">Nile Steel Trading Co.</div>
+            <div class="supplier-category">Steel & Metals - Cairo</div>
+          </div>
+          <div class="supplier-tag">Preferred</div>
         </div>
-        <div class="supplier-tag">Fast approval</div>
+        <div class="supplier-meta">
+          Typical invoice size: EGP 150K - 500K. Payment terms: Cash / 30 days
+        </div>
+        <button class="supplier-cta" onclick="openTab('request')">
+          Request financing for this supplier
+        </button>
       </div>
-      <div class="supplier-meta">
-        Typical invoice size: EGP 80K – 250K · Payment terms: 15–45 days
-      </div>
-      <button class="supplier-cta" onclick="openTab('request')">
-        Request financing for this supplier
-      </button>
-    </div>
 
-    <div class="supplier-card">
-      <div class="supplier-header">
-        <div>
-          <div class="supplier-name">Delta Food Ingredients</div>
-          <div class="supplier-category">Food & FMCG · Delta</div>
+      <div class="supplier-card">
+        <div class="supplier-header">
+          <div>
+            <div class="supplier-name">GreenPack Packaging</div>
+            <div class="supplier-category">Packaging - 10th of Ramadan</div>
+          </div>
+          <div class="supplier-tag">Fast approval</div>
         </div>
-        <div class="supplier-tag">Pilot</div>
+        <div class="supplier-meta">
+          Typical invoice size: EGP 80K - 250K. Payment terms: 15-45 days
+        </div>
+        <button class="supplier-cta" onclick="openTab('request')">
+          Request financing for this supplier
+        </button>
       </div>
-      <div class="supplier-meta">
-        Typical invoice size: EGP 60K – 200K · Payment terms: Cash / 30 days
+
+      <div class="supplier-card">
+        <div class="supplier-header">
+          <div>
+            <div class="supplier-name">Delta Food Ingredients</div>
+            <div class="supplier-category">Food & FMCG - Delta</div>
+          </div>
+          <div class="supplier-tag">Pilot</div>
+        </div>
+        <div class="supplier-meta">
+          Typical invoice size: EGP 60K - 200K. Payment terms: Cash / 30 days
+        </div>
+        <button class="supplier-cta" onclick="openTab('request')">
+          Request financing for this supplier
+        </button>
       </div>
-      <button class="supplier-cta" onclick="openTab('request')">
-        Request financing for this supplier
-      </button>
     </div>
   </div>
 </section>
 
-<!-- REQUEST CREDIT TAB (CREDIT FORM) -->
+<!-- REQUEST CREDIT TAB -->
 <section id="request" class="section">
-  <h2>Request your Finzeed credit line</h2>
-  <p class="lead">
-    Share your basic details and upload the required documents. Our AI will analyze your information and provide instant credit assessment.
-  </p>
-
-  <div class="request-layout">
-    <!-- LEFT: FORM -->
-    <div class="request-form-card">
-      <h3>Step 1 – Company & contact details</h3>
-      <p>Please fill in your information. Fields marked * are required.</p>
-
-      <form id="creditForm" onsubmit="handleSubmit(event)">
-        <div class="form-grid-two">
-          <div class="form-group">
-            <label for="firstname">First name *</label>
-            <input type="text" id="firstname" name="firstname" placeholder="Enter first name" required />
-          </div>
-          <div class="form-group">
-            <label for="lastname">Last name *</label>
-            <input type="text" id="lastname" name="lastname" placeholder="Enter last name" required />
-          </div>
-        </div>
-
-        <div class="form-grid-two">
-          <div class="form-group">
-            <label for="email">Email address *</label>
-            <input type="email" id="email" name="email" placeholder="Enter your email" required />
-          </div>
-          <div class="form-group">
-            <label for="mobile">Mobile number *</label>
-            <input type="tel" id="mobile" name="mobile" placeholder="Enter your mobile number" required />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="company">Company name *</label>
-          <input type="text" id="company" name="company" placeholder="Enter your company name" required />
-        </div>
-
-        <div class="form-grid-two">
-          <div class="form-group">
-            <label for="industry">Industry *</label>
-            <select id="industry" name="industry" required>
-              <option value="">Select industry</option>
-              <option>Manufacturing</option>
-              <option>Trading</option>
-              <option>Distribution</option>
-              <option>Services</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="revenue">Annual revenue (EGP)</label>
-            <input type="number" id="revenue" name="revenue" placeholder="e.g. 10,000,000" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="purpose">What do you need the credit for?</label>
-          <textarea id="purpose" name="purpose" placeholder="e.g. Buying raw materials, importing inventory, supporting seasonal orders"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>Upload documents *</label>
-
-          <div class="upload-row">
-            <div class="upload-box" onclick="document.getElementById('nationalId').click()">
-              <p>🆔 National ID</p>
-              <small>Upload clear copy of your ID.</small>
-              <div class="file-name" id="nationalIdName"></div>
-              <input type="file" id="nationalId" accept="image/*,.pdf" onchange="handleFileSelect(this, 'nationalIdName')" />
-            </div>
-            <div class="upload-box" onclick="document.getElementById('bankStatements').click()">
-              <p>🏦 Bank statements (Multiple files allowed)</p>
-              <small>Last 6–12 months in PDF format. You can upload multiple files.</small>
-              <div class="file-name" id="bankStatementsName"></div>
-              <input type="file" id="bankStatements" accept=".pdf" multiple onchange="handleMultipleFileSelect(this, 'bankStatementsName')" />
-            </div>
-          </div>
-
-          <div class="upload-row">
-            <div class="upload-box" onclick="document.getElementById('commercialReg').click()">
-              <p>📄 Commercial registration</p>
-              <small>Company legal docs.</small>
-              <div class="file-name" id="commercialRegName"></div>
-              <input type="file" id="commercialReg" accept="image/*,.pdf" onchange="handleFileSelect(this, 'commercialRegName')" />
-            </div>
-            <div class="upload-box" onclick="document.getElementById('taxCard').click()">
-              <p>💰 Tax card (if available)</p>
-              <small>Optional but recommended.</small>
-              <div class="file-name" id="taxCardName"></div>
-              <input type="file" id="taxCard" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxCardName')" />
-            </div>
-          </div>
-        </div>
-
-        <div class="submit-row">
-          <button type="submit" class="big-btn big-primary">
-            Submit credit request
-          </button>
-          <span class="helper-text">
-            Your data will be encrypted and processed securely via our AI engine.
-          </span>
-        </div>
-      </form>
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>Request your Finzeed credit line</h2>
+      <p>Share your details and upload documents. Our AI will analyze your bank statements and provide instant credit assessment.</p>
     </div>
 
-    <!-- RIGHT: INFO / BENEFITS -->
-    <div class="request-side-card">
-      <h3>What happens after you submit?</h3>
-      <ul>
-        <li>Our AI engine analyses your bank statements and cashflow behaviour.</li>
-        <li>A suitable credit limit and tenor are estimated based on your profile.</li>
-        <li>We contact you to confirm supplier details and complete KYC.</li>
-        <li>Once approved, you can start requesting supplier payments through Finzeed.</li>
-      </ul>
+    <div class="request-layout">
+      <!-- LEFT: FORM -->
+      <div class="request-form-card">
+        <h3>Company & contact details</h3>
+        <p>Please fill in your information. Fields marked * are required.</p>
 
-      <h3>Why Finzeed?</h3>
-      <ul>
-        <li>Credit lines designed specifically for supplier payments.</li>
-        <li>Suppliers get paid on time, in full.</li>
-        <li>You repay in instalments that match your cash cycle.</li>
-      </ul>
+        <form id="creditForm" onsubmit="handleSubmit(event)">
+          <div class="form-grid-two">
+            <div class="form-group">
+              <label for="firstname">First name *</label>
+              <input type="text" id="firstname" name="firstname" placeholder="Enter first name" required />
+            </div>
+            <div class="form-group">
+              <label for="lastname">Last name *</label>
+              <input type="text" id="lastname" name="lastname" placeholder="Enter last name" required />
+            </div>
+          </div>
+
+          <div class="form-grid-two">
+            <div class="form-group">
+              <label for="email">Email address *</label>
+              <input type="email" id="email" name="email" placeholder="Enter your email" required />
+            </div>
+            <div class="form-group">
+              <label for="mobile">Mobile number *</label>
+              <input type="tel" id="mobile" name="mobile" placeholder="Enter your mobile number" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="company">Company name *</label>
+            <input type="text" id="company" name="company" placeholder="Enter your company name" required />
+          </div>
+
+          <div class="form-grid-two">
+            <div class="form-group">
+              <label for="industry">Industry *</label>
+              <select id="industry" name="industry" required>
+                <option value="">Select industry</option>
+                <option>Manufacturing</option>
+                <option>Trading</option>
+                <option>Distribution</option>
+                <option>Services</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="revenue">Annual revenue (EGP) *</label>
+              <input type="number" id="revenue" name="revenue" placeholder="e.g. 10,000,000" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="purpose">What do you need the credit for?</label>
+            <textarea id="purpose" name="purpose" placeholder="e.g. Buying raw materials, importing inventory, supporting seasonal orders"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Upload documents *</label>
+
+            <div class="upload-row">
+              <div class="upload-box" onclick="document.getElementById('balanceSheet').click()">
+                <p>&#x1F4C4; Last balance sheet</p>
+                <small>Upload your most recent balance sheet.</small>
+                <div class="file-name" id="balanceSheetName"></div>
+                <input type="file" id="balanceSheet" accept="image/*,.pdf" onchange="handleFileSelect(this, 'balanceSheetName')" />
+              </div>
+
+              <div class="upload-box" id="bankStatementsBox" onclick="document.getElementById('bankStatements').click()">
+                <p>&#x1F3E6; Bank statements *</p>
+                <small>Last 6-12 months in PDF format. Multiple files allowed.</small>
+                <input type="file" id="bankStatements" accept=".pdf" multiple required onchange="handleBankStatementsSelect(this)" />
+                <div id="bankStatementsList" class="file-list"></div>
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <div class="upload-box" onclick="document.getElementById('commercialReg').click()">
+                <p>&#x1F4C4; Commercial registration *</p>
+                <small>Company legal docs.</small>
+                <div class="file-name" id="commercialRegName"></div>
+                <input type="file" id="commercialReg" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'commercialRegName')" />
+              </div>
+              <div class="upload-box" onclick="document.getElementById('taxCard').click()">
+                <p>&#x1F4B0; Tax card</p>
+                <small>Optional but recommended.</small>
+                <div class="file-name" id="taxCardName"></div>
+                <input type="file" id="taxCard" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxCardName')" />
+              </div>
+            </div>
+          </div>
+
+          <div class="submit-row">
+            <button type="submit" class="big-btn big-primary" id="submitBtn">
+              Submit credit request
+            </button>
+            <span class="helper-text">
+              Your data will be encrypted and processed securely via our AI engine.
+            </span>
+          </div>
+        </form>
+      </div>
+
+      <!-- RIGHT: INFO -->
+      <div class="request-side-card">
+        <h3>What happens after you submit?</h3>
+        <ul>
+          <li>Our AI engine analyses your bank statements and cashflow behaviour.</li>
+          <li>A suitable credit limit and tenor are estimated based on your profile.</li>
+          <li>We contact you to confirm supplier details and complete KYC.</li>
+          <li>Once approved, you can start requesting supplier payments through Finzeed.</li>
+        </ul>
+
+        <h3>Why Finzeed?</h3>
+        <ul>
+          <li>Credit lines designed specifically for supplier payments.</li>
+          <li>Suppliers get paid on time, in full.</li>
+          <li>You repay in instalments that match your cash cycle.</li>
+        </ul>
+      </div>
     </div>
   </div>
 </section>
+
+<!-- PROFILE TAB -->
+<section id="profile" class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>My Profile</h2>
+      <p>Manage your account and view your credit application history.</p>
+    </div>
+
+    <div class="profile-grid">
+      <div class="profile-card">
+        <div class="profile-avatar" id="profileAvatar">FZ</div>
+        <div class="profile-name" id="profileName">-</div>
+        <div class="profile-email" id="profileEmail">-</div>
+
+        <div class="profile-detail">
+          <span class="profile-detail-label">Company</span>
+          <span class="profile-detail-value" id="profileCompany">-</span>
+        </div>
+        <div class="profile-detail">
+          <span class="profile-detail-label">Mobile</span>
+          <span class="profile-detail-value" id="profileMobile">-</span>
+        </div>
+
+        <div class="profile-actions">
+          <button class="btn-outline" onclick="doLogout()">Sign out</button>
+        </div>
+      </div>
+
+      <div class="app-history">
+        <h3>Application History</h3>
+        <div id="appHistoryContent">
+          <div class="empty-state">
+            <p>No applications yet.</p>
+            <button class="btn-primary" onclick="openTab('request')">Submit your first application</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal-box">
+    <button class="close-btn" onclick="closeModal('loginModal')">&times;</button>
+    <h3>Sign in to Finzeed</h3>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="your@email.com" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="Your password" onkeypress="if(event.key==='Enter')doLogin()" />
+    </div>
+    <div class="form-error" id="loginError"></div>
+    <button class="big-btn big-primary" onclick="doLogin()" id="loginBtn" style="width:100%">Sign in</button>
+    <div class="modal-footer">
+      No account? <a onclick="closeModal('loginModal');openModal('signupModal')">Sign up</a>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNUP MODAL -->
+<div class="modal-overlay" id="signupModal">
+  <div class="modal-box">
+    <button class="close-btn" onclick="closeModal('signupModal')">&times;</button>
+    <h3>Create your Finzeed account</h3>
+    <div class="form-grid-two">
+      <div class="form-group">
+        <label>First name *</label>
+        <input type="text" id="signupFirstname" placeholder="First name" />
+      </div>
+      <div class="form-group">
+        <label>Last name *</label>
+        <input type="text" id="signupLastname" placeholder="Last name" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="signupEmail" placeholder="your@email.com" />
+    </div>
+    <div class="form-grid-two">
+      <div class="form-group">
+        <label>Company</label>
+        <input type="text" id="signupCompany" placeholder="Company name" />
+      </div>
+      <div class="form-group">
+        <label>Mobile</label>
+        <input type="tel" id="signupMobile" placeholder="Mobile number" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Password * (min 8 characters)</label>
+      <input type="password" id="signupPassword" placeholder="Create a password" />
+    </div>
+    <div class="form-group">
+      <label>Confirm password *</label>
+      <input type="password" id="signupConfirm" placeholder="Confirm password" onkeypress="if(event.key==='Enter')doSignup()" />
+    </div>
+    <div class="form-error" id="signupError"></div>
+    <button class="big-btn big-primary" onclick="doSignup()" id="signupBtn" style="width:100%">Create account</button>
+    <div class="modal-footer">
+      Already have an account? <a onclick="closeModal('signupModal');openModal('loginModal')">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<!-- Email Verification Modal -->
+<div class="modal-overlay" id="verifyModal">
+  <div class="modal-box" style="text-align:center">
+    <button class="close-btn" onclick="closeModal('verifyModal')">&times;</button>
+    <div style="font-size:48px;margin-bottom:16px">&#9993;</div>
+    <h2 style="margin-bottom:8px">Check your email</h2>
+    <p id="verifyMsg" style="color:#94a3b8;margin-bottom:24px">We've sent a verification link to your email address. Please click the link to activate your account.</p>
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:16px">Didn't receive the email? Check your spam folder or</p>
+    <button class="btn-outline" id="resendBtn" onclick="resendVerification()" style="margin-bottom:16px">Resend verification email</button>
+    <p id="resendStatus" style="font-size:13px;color:#22c55e;display:none"></p>
+    <div class="modal-footer">
+      <a onclick="closeModal('verifyModal');openModal('loginModal')">Back to Sign in</a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <div class="logo-icon">FZ</div>
+        <div class="logo-text">Finzeed</div>
+      </div>
+      <p>AI-powered working capital financing for Egyptian SMEs. We pay your suppliers, you repay in smart instalments.</p>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#" onclick="openTab('how'); return false;">How it works</a>
+        <a href="#" onclick="openTab('why'); return false;">Why Finzeed</a>
+        <a href="#" onclick="openTab('suppliers'); return false;">Suppliers</a>
+        <a href="#" onclick="openTab('request'); return false;">Apply now</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About us</a>
+        <a href="#">Careers</a>
+        <a href="#">Contact</a>
+        <a href="#">Privacy policy</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <div>&copy; 2025 Finzeed. All rights reserved.</div>
+    <div>Powered by <span>AI</span></div>
+  </div>
+</footer>
 
 <!-- CHAT WIDGET -->
 <div class="chat-widget">
   <button class="chat-button" onclick="toggleChat()" id="chatButton">
-    💬
+    &#x1F4AC;
   </button>
-  
+
   <div class="chat-window" id="chatWindow">
     <div class="chat-header">
       <h3>Finzeed Assistant</h3>
-      <button class="chat-close" onclick="toggleChat()">×</button>
+      <button class="chat-close" onclick="toggleChat()">&times;</button>
     </div>
-    
+
     <div class="chat-messages" id="chatMessages">
       <div class="chat-message bot">
         <div class="message-bubble">
           Hi! I'm your Finzeed assistant. How can I help you today? You can ask me about:
-          <br>• Credit application process
-          <br>• Required documents
-          <br>• Repayment terms
-          <br>• Supplier payments
+          <br>&#8226; Credit application process
+          <br>&#8226; Required documents
+          <br>&#8226; Repayment terms
+          <br>&#8226; Supplier payments
         </div>
         <div class="message-time">Just now</div>
       </div>
     </div>
-    
+
     <div class="chat-input-area">
-      <input 
-        type="text" 
-        class="chat-input" 
-        id="chatInput" 
+      <input
+        type="text"
+        class="chat-input"
+        id="chatInput"
         placeholder="Type your message..."
         onkeypress="handleChatKeyPress(event)"
       />
       <button class="chat-send" id="chatSend" onclick="sendChatMessage()">
-        ➤
+        &#10148;
       </button>
     </div>
   </div>
@@ -1347,17 +2093,17 @@
 
 <script>
   const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';
-  
-  // Store uploaded files
+
+  let bankStatementFiles = [];
   let uploadedFiles = {};
 
   // Tab system
   function openTab(tabId) {
-    document.querySelectorAll('.section').forEach(section => {
+    document.querySelectorAll('.section').forEach(function(section) {
       section.classList.remove('active');
     });
 
-    document.querySelectorAll('.tabs span').forEach(tab => {
+    document.querySelectorAll('.tabs span').forEach(function(tab) {
       tab.classList.remove('active');
     });
 
@@ -1374,12 +2120,12 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Handle file selection
+  // Handle single file selection
   function handleFileSelect(input, nameElementId) {
-    const file = input.files[0];
-    const nameElement = document.getElementById(nameElementId);
-    const uploadBox = input.closest('.upload-box');
-    
+    var file = input.files[0];
+    var nameElement = document.getElementById(nameElementId);
+    var uploadBox = input.closest('.upload-box');
+
     if (file) {
       nameElement.textContent = file.name;
       uploadBox.classList.add('has-file');
@@ -1391,297 +2137,277 @@
     }
   }
 
-  // Handle multiple file selection (for bank statements)
-  function handleMultipleFileSelect(input, nameElementId) {
-    const files = Array.from(input.files);
-    const nameElement = document.getElementById(nameElementId);
-    const uploadBox = input.closest('.upload-box');
-    
+  // Handle multiple bank statement files
+  function handleBankStatementsSelect(input) {
+    var files = Array.from(input.files);
+    var uploadBox = document.getElementById('bankStatementsBox');
+
     if (files.length > 0) {
-      // Store all files as an array
-      uploadedFiles[input.id] = files;
-      
-      // Show file names
-      if (files.length === 1) {
-        nameElement.textContent = files[0].name;
-      } else {
-        nameElement.textContent = `${files.length} files selected: ${files.map(f => f.name).join(', ')}`;
-      }
+      bankStatementFiles = bankStatementFiles.concat(files);
       uploadBox.classList.add('has-file');
-    } else {
-      nameElement.textContent = '';
-      uploadBox.classList.remove('has-file');
-      delete uploadedFiles[input.id];
+      updateBankStatementsList();
+      console.log(bankStatementFiles.length + ' bank statement file(s) selected');
     }
   }
 
-  // Convert file to base64
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+  function updateBankStatementsList() {
+    var fileList = document.getElementById('bankStatementsList');
+    fileList.innerHTML = '';
+
+    bankStatementFiles.forEach(function(file, index) {
+      var fileItem = document.createElement('div');
+      fileItem.className = 'file-item';
+      fileItem.innerHTML =
+        '<div class="file-item-name">' + file.name + '</div>' +
+        '<button type="button" class="remove-file" onclick="removeBankStatement(' + index + ')">Remove</button>';
+      fileList.appendChild(fileItem);
     });
   }
 
-  // Handle form submission
+  function removeBankStatement(index) {
+    bankStatementFiles.splice(index, 1);
+    updateBankStatementsList();
+
+    if (bankStatementFiles.length === 0) {
+      document.getElementById('bankStatementsBox').classList.remove('has-file');
+    }
+  }
+
+  // Form submission
   async function handleSubmit(event) {
     event.preventDefault();
-    
-    // Check if at least bank statements are uploaded
-    if (!uploadedFiles || Object.keys(uploadedFiles).length === 0 || !uploadedFiles['bankStatements']) {
-      alert('Please upload your bank statements (required for credit assessment)');
+
+    if (bankStatementFiles.length === 0) {
+      alert('Please upload at least one bank statement (required for credit assessment)');
       return;
     }
 
-    // Show loading overlay
     document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('submitBtn').disabled = true;
 
     try {
-      // Get form data
-      const formData = {
-        firstname: document.getElementById('firstname').value,
-        lastname: document.getElementById('lastname').value,
-        email: document.getElementById('email').value,
-        mobile: document.getElementById('mobile').value,
-        company: document.getElementById('company').value,
-        industry: document.getElementById('industry').value,
-        revenue: document.getElementById('revenue').value,
-        purpose: document.getElementById('purpose').value
-      };
+      var formData = new FormData();
 
-      // Convert files to base64
-      const documents = {};
-      for (const [key, fileOrFiles] of Object.entries(uploadedFiles)) {
-        if (Array.isArray(fileOrFiles)) {
-          // Handle multiple files (bank statements)
-          documents[key] = [];
-          for (let i = 0; i < fileOrFiles.length; i++) {
-            const file = fileOrFiles[i];
-            documents[key].push({
-              filename: file.name,
-              content: await fileToBase64(file),
-              type: file.type
-            });
-          }
-        } else {
-          // Handle single file
-          const file = fileOrFiles;
-          if (file) {
-            documents[key] = {
-              filename: file.name,
-              content: await fileToBase64(file),
-              type: file.type
-            };
-          }
-        }
-      }
+      formData.append('company', document.getElementById('company').value);
+      formData.append('firstname', document.getElementById('firstname').value);
+      formData.append('lastname', document.getElementById('lastname').value);
+      formData.append('email', document.getElementById('email').value);
+      formData.append('mobile', document.getElementById('mobile').value);
+      formData.append('revenue', document.getElementById('revenue').value);
+      formData.append('industry', document.getElementById('industry').value);
+      formData.append('purpose', document.getElementById('purpose').value || '');
 
-      // Send to Azure Function
-      const response = await fetch(AZURE_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          documents: documents
-        })
+      bankStatementFiles.forEach(function(file) {
+        formData.append('bankStatements', file);
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server response:', errorText);
-        throw new Error(`Server error: ${response.status}`);
+      if (uploadedFiles['commercialReg']) {
+        formData.append('commercialReg', uploadedFiles['commercialReg']);
+      }
+      if (uploadedFiles['taxCard']) {
+        formData.append('taxCard', uploadedFiles['taxCard']);
+      }
+      if (uploadedFiles['balanceSheet']) {
+        formData.append('balanceSheet', uploadedFiles['balanceSheet']);
       }
 
-      const result = await response.json();
-      
-      // Hide loading overlay
+      var fetchOptions = { method: 'POST', body: formData };
+      if (authToken) {
+        fetchOptions.headers = { 'Authorization': 'Bearer ' + authToken };
+      }
+      var response = await fetch(AZURE_FUNCTION_URL, fetchOptions);
+
+      if (!response.ok) {
+        var errorText = await response.text();
+        console.error('Server response:', errorText);
+        throw new Error('Server error: ' + response.status);
+      }
+
+      var result = await response.json();
+
       document.getElementById('loadingOverlay').classList.remove('active');
-      
-      // Show results
+      document.getElementById('submitBtn').disabled = false;
+
       displayResults(result);
 
     } catch (error) {
       console.error('Error:', error);
       document.getElementById('loadingOverlay').classList.remove('active');
-      alert('Error processing your request. Please try again or contact support.');
+      document.getElementById('submitBtn').disabled = false;
+      alert('Error processing your request. Please try again or contact support.\n\nError: ' + error.message);
     }
   }
 
   // Display results in modal
   function displayResults(result) {
-    const assessment = result.assessment;
-    const isApproved = assessment.decision === 'APPROVED';
-    
-    let html = '';
-    
-    // Decision banner
-    if (isApproved) {
-      html += `
-        <div class="decision-approved">
-          <h2>🎉 Congratulations! Your Credit is Approved</h2>
-          <p>Your credit line has been approved based on our AI analysis.</p>
-        </div>
-      `;
+    var decision = result.decision;
+    var creditLimit = result.credit_limit;
+    var tenorMonths = result.tenor_months;
+    var interestRate = result.interest_rate;
+    var confidenceScore = result.confidence_score;
+    var riskFactors = result.risk_factors || [];
+    var recommendations = result.recommendations || [];
+    var applicationId = result.application_id;
+    var bankAnalysis = result.bank_analysis;
+
+    var html = '';
+
+    if (decision === 'APPROVED') {
+      html += '<div class="decision-approved">' +
+        '<h2>Congratulations! Your Credit is Approved</h2>' +
+        '<p>Your credit line has been approved by our AI assessment.</p></div>';
+
+      html += '<div class="result-item">' +
+        '<h4>Approved Credit Limit</h4>' +
+        '<p style="font-size:1.8rem;font-weight:700;color:var(--primary);margin:0.5rem 0;">EGP ' +
+        Number(creditLimit).toLocaleString() + '</p></div>';
+
+      html += '<div class="result-item">' +
+        '<h4>Repayment Terms</h4>' +
+        '<p><strong>Tenor:</strong> ' + tenorMonths + ' months</p>' +
+        '<p><strong>Interest Rate:</strong> ' + interestRate + '% annually (' + (interestRate/12).toFixed(1) + '% monthly)</p>' +
+        '<p><strong>Confidence Score:</strong> ' + confidenceScore + '%</p></div>';
+
+      if (riskFactors.length > 0) {
+        html += '<div class="result-item"><h4>Assessment Factors</h4><ul style="margin:0.5rem 0;padding-left:1.5rem;">';
+        riskFactors.forEach(function(factor) {
+          html += '<li>' + escapeHtml(factor) + '</li>';
+        });
+        html += '</ul></div>';
+      }
+
+    } else if (decision === 'UNDER_REVIEW') {
+      html += '<div class="decision-pending">' +
+        '<h2>Application Under Review</h2>' +
+        '<p>Your application requires manual review by our team.</p></div>';
+
+      if (creditLimit && creditLimit > 0) {
+        html += '<div class="result-item">' +
+          '<h4>Preliminary Assessment</h4>' +
+          '<p><strong>Estimated Credit:</strong> EGP ' + Number(creditLimit).toLocaleString() + '</p>' +
+          '<p><strong>Tenor:</strong> ' + tenorMonths + ' months</p></div>';
+      }
     } else {
-      html += `
-        <div class="decision-rejected">
-          <h2>Credit Application Status</h2>
-          <p>We were unable to approve your application at this time.</p>
-        </div>
-      `;
+      html += '<div class="decision-rejected">' +
+        '<h2>Credit Application Status</h2>' +
+        '<p>We were unable to approve your application at this time.</p></div>';
     }
 
-    // Credit details
-    if (isApproved) {
-      html += `
-        <div class="result-item">
-          <h4>Approved Credit Limit</h4>
-          <p style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">
-            EGP ${Number(assessment.credit_limit).toLocaleString()}
-          </p>
-        </div>
-
-        <div class="result-item">
-          <h4>Repayment Terms</h4>
-          <p><strong>Tenor:</strong> ${assessment.tenor_months} months</p>
-          <p><strong>Interest Rate:</strong> ${assessment.interest_rate}% per annum</p>
-        </div>
-      `;
+    if (recommendations.length > 0) {
+      html += '<div class="result-item"><h4>Recommendations</h4><ul style="margin:0.5rem 0;padding-left:1.5rem;">';
+      recommendations.forEach(function(rec) {
+        html += '<li>' + escapeHtml(rec) + '</li>';
+      });
+      html += '</ul></div>';
     }
 
-    // Risk factors
-    if (assessment.risk_factors && assessment.risk_factors.length > 0) {
-      html += `
-        <div class="result-item">
-          <h4>Assessment Factors</h4>
-          <ul style="margin: 0; padding-left: 1.2rem;">
-            ${assessment.risk_factors.map(factor => `<li>${factor}</li>`).join('')}
-          </ul>
-        </div>
-      `;
+    if (bankAnalysis && bankAnalysis.total_inflows) {
+      html += '<div class="result-item" style="background:var(--primary-light);border-left:4px solid var(--primary);">' +
+        '<h4>Bank Statement Analysis Complete</h4>' +
+        '<p><strong>Total Inflows:</strong> ' + Number(bankAnalysis.total_inflows).toLocaleString() + ' EGP</p>' +
+        '<p><strong>Monthly Average:</strong> ' + Number(bankAnalysis.monthly_average).toLocaleString() + ' EGP</p>' +
+        '<p><strong>Annual Estimate:</strong> ' + Number(bankAnalysis.annual_estimate).toLocaleString() + ' EGP</p>' +
+        '<p><strong>Transactions Analyzed:</strong> ' + bankAnalysis.transactions_found + '</p></div>';
+    } else if (bankAnalysis === null) {
+      html += '<div class="result-item" style="background:#fffbeb;border-left:4px solid #f59e0b;">' +
+        '<h4>Bank Statement Analysis Pending</h4>' +
+        '<p>Bank statements will be reviewed manually by our team.</p></div>';
     }
 
-    // Recommendations
-    if (assessment.recommendations && assessment.recommendations.length > 0) {
-      html += `
-        <div class="result-item">
-          <h4>Recommendations</h4>
-          <ul style="margin: 0; padding-left: 1.2rem;">
-            ${assessment.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-          </ul>
-        </div>
-      `;
+    if (applicationId) {
+      html += '<div class="result-item">' +
+        '<h4>Application Reference</h4>' +
+        '<p><strong>Application ID:</strong> ' + applicationId + '</p>' +
+        '<p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.5rem;">Please keep this ID for future reference.</p></div>';
     }
 
-    // Confidence score
-    if (assessment.confidence_score) {
-      html += `
-        <div class="result-item">
-          <h4>Assessment Confidence</h4>
-          <p>${assessment.confidence_score}% confidence in this assessment</p>
-        </div>
-      `;
-    }
+    var email = document.getElementById('email').value;
+    var mobile = document.getElementById('mobile').value;
 
-    // Next steps
-    html += `
-      <div class="result-item">
-        <h4>Next Steps</h4>
-        <p>Our team will contact you at <strong>${result.user_info.email}</strong> within 24 hours to finalize your application and discuss supplier payment arrangements.</p>
-      </div>
-    `;
+    html += '<div class="result-item">' +
+      '<h4>Next Steps</h4>' +
+      '<p>Our team will contact you at:</p>' +
+      '<p><strong>Email:</strong> ' + escapeHtml(email) + '</p>' +
+      '<p><strong>Mobile:</strong> ' + escapeHtml(mobile) + '</p>' +
+      '<p style="margin-top:0.5rem;">Expected contact time: <strong>24-48 hours</strong></p></div>';
 
     document.getElementById('resultsBody').innerHTML = html;
     document.getElementById('resultsModal').classList.add('active');
   }
 
-  // Close results modal
   function closeResults() {
     document.getElementById('resultsModal').classList.remove('active');
-    // Reset form
     document.getElementById('creditForm').reset();
+    bankStatementFiles = [];
     uploadedFiles = {};
-    document.querySelectorAll('.file-name').forEach(el => el.textContent = '');
-    document.querySelectorAll('.upload-box').forEach(box => box.classList.remove('has-file'));
+    document.querySelectorAll('.file-name').forEach(function(el) { el.textContent = ''; });
+    document.getElementById('bankStatementsList').innerHTML = '';
+    document.querySelectorAll('.upload-box').forEach(function(box) { box.classList.remove('has-file'); });
   }
 
-  // ========== CHAT FUNCTIONALITY ==========
-  
-  let chatHistory = [];
-  
+  // ========== CHAT ==========
+
+  var chatHistory = [];
+
   function toggleChat() {
-    const chatWindow = document.getElementById('chatWindow');
-    const chatButton = document.getElementById('chatButton');
+    var chatWindow = document.getElementById('chatWindow');
+    var chatButton = document.getElementById('chatButton');
     chatWindow.classList.toggle('active');
-    
+
     if (chatWindow.classList.contains('active')) {
-      chatButton.textContent = '✕';
+      chatButton.innerHTML = '&times;';
       document.getElementById('chatInput').focus();
     } else {
-      chatButton.textContent = '💬';
+      chatButton.innerHTML = '&#x1F4AC;';
     }
   }
-  
+
   function handleChatKeyPress(event) {
     if (event.key === 'Enter') {
       sendChatMessage();
     }
   }
-  
+
   async function sendChatMessage() {
-    const input = document.getElementById('chatInput');
-    const message = input.value.trim();
-    
+    var input = document.getElementById('chatInput');
+    var message = input.value.trim();
+
     if (!message) return;
-    
-    // Add user message to chat
+
     addMessageToChat('user', message);
     input.value = '';
-    
-    // Disable send button
-    const sendBtn = document.getElementById('chatSend');
+
+    var sendBtn = document.getElementById('chatSend');
     sendBtn.disabled = true;
-    
-    // Show typing indicator
+
     showTypingIndicator();
-    
+
     try {
-      // Add message to history
       chatHistory.push({ role: 'user', content: message });
-      
-      // Call Azure Function for chat
-      const response = await fetch(AZURE_FUNCTION_URL, {
+
+      var response = await fetch(AZURE_FUNCTION_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat: true,
           message: message,
           history: chatHistory
         })
       });
-      
+
       if (!response.ok) {
         throw new Error('Chat service unavailable');
       }
-      
-      const data = await response.json();
-      
-      // Remove typing indicator
+
+      var data = await response.json();
+
       removeTypingIndicator();
-      
-      // Add bot response
-      const botMessage = data.reply || data.message || "I'm sorry, I couldn't process that. Please try again.";
+
+      var botMessage = data.reply || data.message || "I'm sorry, I couldn't process that. Please try again.";
       addMessageToChat('bot', botMessage);
-      
-      // Add to history
+
       chatHistory.push({ role: 'assistant', content: botMessage });
-      
+
     } catch (error) {
       console.error('Chat error:', error);
       removeTypingIndicator();
@@ -1690,52 +2416,339 @@
       sendBtn.disabled = false;
     }
   }
-  
+
   function addMessageToChat(sender, message) {
-    const messagesContainer = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${sender}`;
-    
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    
-    messageDiv.innerHTML = `
-      <div class="message-bubble">${escapeHtml(message)}</div>
-      <div class="message-time">${timeString}</div>
-    `;
-    
+    var messagesContainer = document.getElementById('chatMessages');
+    var messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message ' + sender;
+
+    var now = new Date();
+    var timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+    messageDiv.innerHTML =
+      '<div class="message-bubble">' + escapeHtml(message) + '</div>' +
+      '<div class="message-time">' + timeString + '</div>';
+
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
-  
+
   function showTypingIndicator() {
-    const messagesContainer = document.getElementById('chatMessages');
-    const typingDiv = document.createElement('div');
+    var messagesContainer = document.getElementById('chatMessages');
+    var typingDiv = document.createElement('div');
     typingDiv.className = 'chat-message bot';
     typingDiv.id = 'typingIndicator';
-    typingDiv.innerHTML = `
-      <div class="typing-indicator">
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-      </div>
-    `;
+    typingDiv.innerHTML =
+      '<div class="typing-indicator">' +
+      '<div class="typing-dot"></div>' +
+      '<div class="typing-dot"></div>' +
+      '<div class="typing-dot"></div>' +
+      '</div>';
     messagesContainer.appendChild(typingDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
-  
+
   function removeTypingIndicator() {
-    const indicator = document.getElementById('typingIndicator');
+    var indicator = document.getElementById('typingIndicator');
     if (indicator) {
       indicator.remove();
     }
   }
-  
+
   function escapeHtml(text) {
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
+
+  // ========== AUTH SYSTEM ==========
+
+  var authToken = localStorage.getItem('finzeed_token');
+  var currentUser = JSON.parse(localStorage.getItem('finzeed_user') || 'null');
+
+  function isLoggedIn() {
+    return !!authToken && !!currentUser;
+  }
+
+  function openModal(id) {
+    document.getElementById(id).classList.add('active');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+    // Clear errors
+    var err = document.getElementById(id.replace('Modal', 'Error'));
+    if (err) err.textContent = '';
+  }
+
+  async function apiCall(body) {
+    var headers = { 'Content-Type': 'application/json' };
+    if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+    var resp = await fetch(AZURE_FUNCTION_URL, { method: 'POST', headers: headers, body: JSON.stringify(body) });
+    var data = await resp.json();
+    if (resp.status === 401) {
+      doLogout();
+    }
+    data._status = resp.status;
+    return data;
+  }
+
+  function updateNavbar() {
+    var navActions = document.getElementById('navActions');
+    var profileTab = document.getElementById('profileTab');
+
+    if (isLoggedIn()) {
+      var initials = ((currentUser.firstname || '')[0] || '') + ((currentUser.lastname || '')[0] || '');
+      initials = initials.toUpperCase() || 'FZ';
+      navActions.innerHTML =
+        '<div class="user-greeting" onclick="openTab(\'profile\')">' +
+          '<div class="avatar-sm">' + escapeHtml(initials) + '</div>' +
+          escapeHtml(currentUser.firstname || 'User') +
+        '</div>' +
+        '<button class="btn-outline" onclick="doLogout()">Sign out</button>' +
+        '<button class="btn-primary" onclick="openTab(\'request\')">Request credit</button>';
+      profileTab.style.display = '';
+    } else {
+      navActions.innerHTML =
+        '<button class="btn-outline" id="signInBtn" onclick="openModal(\'loginModal\')">Sign in</button>' +
+        '<button class="btn-primary" onclick="openTab(\'request\')">Request credit</button>';
+      profileTab.style.display = 'none';
+    }
+  }
+
+  async function doLogin() {
+    var email = document.getElementById('loginEmail').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errorEl = document.getElementById('loginError');
+    errorEl.textContent = '';
+
+    if (!email || !password) {
+      errorEl.textContent = 'Please enter email and password.';
+      return;
+    }
+
+    document.getElementById('loginBtn').disabled = true;
+    document.getElementById('loginBtn').textContent = 'Signing in...';
+
+    try {
+      var result = await apiCall({ action: 'login', email: email, password: password });
+
+      if (result.success) {
+        authToken = result.token;
+        currentUser = result.user;
+        localStorage.setItem('finzeed_token', authToken);
+        localStorage.setItem('finzeed_user', JSON.stringify(currentUser));
+        closeModal('loginModal');
+        updateNavbar();
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+      } else if (result.email_not_verified) {
+        closeModal('loginModal');
+        showVerificationMessage(result.email);
+      } else {
+        errorEl.textContent = result.error || 'Login failed. Please try again.';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Connection error. Please try again.';
+    } finally {
+      document.getElementById('loginBtn').disabled = false;
+      document.getElementById('loginBtn').textContent = 'Sign in';
+    }
+  }
+
+  async function doSignup() {
+    var firstname = document.getElementById('signupFirstname').value.trim();
+    var lastname = document.getElementById('signupLastname').value.trim();
+    var email = document.getElementById('signupEmail').value.trim();
+    var company = document.getElementById('signupCompany').value.trim();
+    var mobile = document.getElementById('signupMobile').value.trim();
+    var password = document.getElementById('signupPassword').value;
+    var confirm = document.getElementById('signupConfirm').value;
+    var errorEl = document.getElementById('signupError');
+    errorEl.textContent = '';
+
+    if (!firstname || !lastname || !email || !password) {
+      errorEl.textContent = 'Please fill in all required fields.';
+      return;
+    }
+    if (password.length < 8) {
+      errorEl.textContent = 'Password must be at least 8 characters.';
+      return;
+    }
+    if (password !== confirm) {
+      errorEl.textContent = 'Passwords do not match.';
+      return;
+    }
+
+    document.getElementById('signupBtn').disabled = true;
+    document.getElementById('signupBtn').textContent = 'Creating account...';
+
+    try {
+      var result = await apiCall({
+        action: 'register',
+        email: email,
+        password: password,
+        firstname: firstname,
+        lastname: lastname,
+        company: company,
+        mobile: mobile
+      });
+
+      if (result.success) {
+        closeModal('signupModal');
+        // Clear form
+        ['signupFirstname','signupLastname','signupEmail','signupCompany','signupMobile','signupPassword','signupConfirm'].forEach(function(id) {
+          document.getElementById(id).value = '';
+        });
+        // Show verification message
+        showVerificationMessage(email);
+      } else {
+        errorEl.textContent = result.error || 'Registration failed. Please try again.';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Connection error. Please try again.';
+    } finally {
+      document.getElementById('signupBtn').disabled = false;
+      document.getElementById('signupBtn').textContent = 'Create account';
+    }
+  }
+
+  function doLogout() {
+    localStorage.removeItem('finzeed_token');
+    localStorage.removeItem('finzeed_user');
+    authToken = null;
+    currentUser = null;
+    updateNavbar();
+    openTab('home');
+  }
+
+  async function loadProfile() {
+    if (!isLoggedIn()) return;
+
+    // Populate basic info from stored user
+    var initials = ((currentUser.firstname || '')[0] || '') + ((currentUser.lastname || '')[0] || '');
+    document.getElementById('profileAvatar').textContent = initials.toUpperCase() || 'FZ';
+    document.getElementById('profileName').textContent = (currentUser.firstname || '') + ' ' + (currentUser.lastname || '');
+    document.getElementById('profileEmail').textContent = currentUser.email || '';
+    document.getElementById('profileCompany').textContent = currentUser.company_name || '-';
+    document.getElementById('profileMobile').textContent = currentUser.mobile || '-';
+
+    // Fetch application history from API
+    try {
+      var result = await apiCall({ action: 'profile' });
+      if (result.success && result.applications && result.applications.length > 0) {
+        var html = '<table class="app-table"><thead><tr>' +
+          '<th>Date</th><th>Company</th><th>Decision</th><th>Credit Limit</th><th>Confidence</th>' +
+          '</tr></thead><tbody>';
+
+        result.applications.forEach(function(app) {
+          var statusClass = 'status-review';
+          var statusText = app.decision || 'Pending';
+          if (app.decision === 'APPROVED') { statusClass = 'status-approved'; statusText = 'Approved'; }
+          else if (app.decision === 'REJECTED') { statusClass = 'status-rejected'; statusText = 'Rejected'; }
+          else if (app.decision === 'UNDER_REVIEW') { statusText = 'Under Review'; }
+
+          html += '<tr>' +
+            '<td>' + escapeHtml(app.assessed_at ? app.assessed_at.split(' ')[0] : '-') + '</td>' +
+            '<td>' + escapeHtml(app.company_name || '-') + '</td>' +
+            '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+            '<td>' + (app.credit_limit ? 'EGP ' + Number(app.credit_limit).toLocaleString() : '-') + '</td>' +
+            '<td>' + (app.confidence_score ? app.confidence_score + '%' : '-') + '</td>' +
+            '</tr>';
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('appHistoryContent').innerHTML = html;
+      }
+    } catch (e) {
+      console.error('Failed to load profile:', e);
+    }
+  }
+
+  // Override openTab to support profile + auto-fill
+  var _originalOpenTab = openTab;
+  openTab = function(tabId) {
+    _originalOpenTab(tabId);
+
+    if (tabId === 'profile' && isLoggedIn()) {
+      loadProfile();
+    }
+
+    if (tabId === 'request' && isLoggedIn()) {
+      document.getElementById('firstname').value = currentUser.firstname || '';
+      document.getElementById('lastname').value = currentUser.lastname || '';
+      document.getElementById('email').value = currentUser.email || '';
+      document.getElementById('mobile').value = currentUser.mobile || '';
+      document.getElementById('company').value = currentUser.company_name || '';
+    }
+  };
+
+  // -- Verification flow --
+  var _verifyEmail = '';
+
+  function showVerificationMessage(email) {
+    _verifyEmail = email;
+    document.getElementById('verifyMsg').textContent =
+      "We've sent a verification link to " + email + ". Please click the link to activate your account.";
+    document.getElementById('resendStatus').style.display = 'none';
+    openModal('verifyModal');
+  }
+
+  async function resendVerification() {
+    var btn = document.getElementById('resendBtn');
+    var status = document.getElementById('resendStatus');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    status.style.display = 'none';
+    try {
+      var result = await apiCall({ action: 'resend_verification', email: _verifyEmail });
+      status.style.display = 'block';
+      if (result.success) {
+        status.style.color = '#22c55e';
+        status.textContent = 'Verification email sent! Check your inbox.';
+      } else {
+        status.style.color = '#ef4444';
+        status.textContent = result.error || 'Failed to resend. Please try again.';
+      }
+    } catch (e) {
+      status.style.display = 'block';
+      status.style.color = '#ef4444';
+      status.textContent = 'Connection error. Please try again.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Resend verification email';
+    }
+  }
+
+  // Handle ?verify=TOKEN on page load
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get('verify');
+    if (token) {
+      // Remove token from URL without reload
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Show a temporary verifying state
+      document.addEventListener('DOMContentLoaded', function() { doVerify(token); });
+      if (document.readyState !== 'loading') { doVerify(token); }
+    }
+  })();
+
+  async function doVerify(token) {
+    try {
+      var result = await apiCall({ action: 'verify_email', token: token });
+      if (result.success) {
+        alert('Email verified successfully! You can now sign in.');
+        openModal('loginModal');
+      } else {
+        alert(result.error || 'Verification failed. The link may have expired.');
+      }
+    } catch (e) {
+      alert('Connection error. Please try again.');
+    }
+  }
+
+  // Initialize auth state on page load
+  updateNavbar();
 </script>
 
 </body>

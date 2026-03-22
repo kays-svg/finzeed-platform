@@ -1,0 +1,11 @@
+azure-functions
+pyodbc
+azure-storage-blob
+azure-ai-formrecognizer
+azure-core
+openai
+python-dateutil
+pdfplumber
+requests
+PyJWT
+sendgrid
