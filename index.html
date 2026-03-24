@@ -1427,6 +1427,268 @@
       margin-bottom: 1rem;
     }
 
+    /* ========== RENEWAL ========== */
+    .renewal-credit-card {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(0,0,0,0.04);
+      border-left: 4px solid var(--primary);
+      margin-bottom: 2rem;
+    }
+    .renewal-credit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .renewal-credit-amount {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .renewal-credit-amount small {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .renewal-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .renewal-stat label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+    .renewal-stat .stat-val {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .renewal-progress {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .renewal-progress-fill {
+      height: 100%;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #f59e0b, #eab308);
+    }
+    .renewal-progress-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .renewal-banner {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1.5px solid #86efac;
+      border-radius: var(--card-radius);
+      padding: 1.8rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .renewal-banner h3 {
+      color: var(--primary-dark);
+      font-size: 1.1rem;
+      margin-bottom: 0.3rem;
+    }
+    .renewal-banner p {
+      color: #2d5a3a;
+      font-size: 0.9rem;
+    }
+    .renewal-offer-box {
+      background: white;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .renewal-offer-box .offer-amount {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .renewal-offer-box .offer-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .renewal-form-card {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2.5rem;
+      box-shadow: var(--shadow-lg);
+      border-top: 3px solid var(--primary);
+      max-width: 700px;
+      margin: 0 auto 2rem;
+    }
+    .renewal-form-card h2 {
+      text-align: center;
+      margin-bottom: 0.3rem;
+    }
+    .renewal-form-card > p {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-size: 0.92rem;
+    }
+    .prefilled-section {
+      background: #f8fbf9;
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #e5ede8;
+    }
+    .prefilled-section h4 {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .prefilled-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .prefilled-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .prefilled-item label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .prefilled-item span {
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+    .prefilled-badge {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+    }
+    .installment-btn {
+      padding: 0.5rem 1rem;
+      border: 1.5px solid #cbd8cf;
+      border-radius: 10px;
+      background: white;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+    .installment-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .installment-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(10,124,26,0.3);
+    }
+    .renewal-calc-box {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      border: 1px solid #86efac;
+    }
+    .renewal-calc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      text-align: center;
+    }
+    .renewal-calc-label {
+      font-size: 0.75rem;
+      color: #2d5a3a;
+    }
+    .renewal-calc-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .renewal-upload-zone {
+      text-align: center;
+      padding: 2rem;
+      border: 2px dashed #cbd8cf;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .renewal-upload-zone:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .renewal-upload-zone.has-file {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      border-style: solid;
+    }
+    .renewal-summary-box {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #86efac;
+    }
+    .renewal-summary-box h4 {
+      color: var(--primary-dark);
+      margin-bottom: 0.8rem;
+      font-size: 0.95rem;
+    }
+    .renewal-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 1rem;
+      text-align: center;
+    }
+    .renewal-summary-value {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .renewal-summary-label {
+      font-size: 0.78rem;
+      color: #2d5a3a;
+    }
+    .renewal-no-history {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+    .renewal-no-history h3 {
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+    }
+    @media (max-width: 768px) {
+      .renewal-stats { grid-template-columns: repeat(2, 1fr); }
+      .prefilled-grid { grid-template-columns: 1fr; }
+      .renewal-summary-grid { grid-template-columns: 1fr 1fr; }
+      .renewal-banner { flex-direction: column; text-align: center; }
+      .renewal-calc-grid { grid-template-columns: 1fr; }
+    }
+
     /* Navbar auth state */
     .user-greeting {
       display: flex;
@@ -1597,6 +1859,7 @@
     <span data-tab="why" onclick="openTab('why')">Why Finzeed</span>
     <span data-tab="suppliers" onclick="openTab('suppliers')">Suppliers</span>
     <span data-tab="request" onclick="openTab('request')">Request credit</span>
+    <span data-tab="renewal" onclick="openTab('renewal')" id="renewalTab" style="display:none">Renew Credit</span>
     <span data-tab="profile" onclick="openTab('profile')" id="profileTab" style="display:none">My Profile</span>
   </div>
 
@@ -1929,6 +2192,184 @@
             <button class="btn-primary" onclick="openTab('request')">Submit your first application</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RENEWAL TAB -->
+<section id="renewal" class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>Renew Your Credit Line</h2>
+      <p>Fast-track your renewal with pre-filled information. Only a fresh bank statement is needed.</p>
+    </div>
+
+    <!-- No history state (shown when user has no approved applications) -->
+    <div id="renewalNoHistory" class="renewal-no-history" style="display:none">
+      <h3>No active credit line found</h3>
+      <p>You need an approved credit application before you can renew.</p>
+      <button class="big-btn big-primary" onclick="openTab('request')" style="margin-top:1rem">Apply for credit</button>
+    </div>
+
+    <!-- Renewal content (shown when user has application history) -->
+    <div id="renewalContent" style="display:none">
+
+      <!-- Active Credit Line Card -->
+      <div class="renewal-credit-card">
+        <div class="renewal-credit-header">
+          <div>
+            <span class="status-badge status-approved" id="renewalStatusBadge">Active</span>
+            <div class="renewal-credit-amount" id="renewalCreditAmount">EGP 1,500,000 <small>approved limit</small></div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:0.82rem;color:var(--text-muted)" id="renewalAppRef">Application #-</div>
+            <div style="font-size:0.82rem;color:var(--text-muted)" id="renewalAppDate">Approved: -</div>
+          </div>
+        </div>
+        <div class="renewal-stats">
+          <div class="renewal-stat">
+            <label>Decision</label>
+            <div class="stat-val" id="renewalDecision">Approved</div>
+          </div>
+          <div class="renewal-stat">
+            <label>Tenor</label>
+            <div class="stat-val" id="renewalTenor">- months</div>
+          </div>
+          <div class="renewal-stat">
+            <label>Confidence</label>
+            <div class="stat-val" id="renewalConfidence">-%</div>
+          </div>
+          <div class="renewal-stat">
+            <label>Monthly Rate</label>
+            <div class="stat-val">3.5%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Renewal Banner -->
+      <div class="renewal-banner">
+        <div>
+          <h3>You're eligible for renewal!</h3>
+          <p>Based on your history with Finzeed, you can apply for a renewed credit line.</p>
+        </div>
+        <button class="big-btn big-primary" onclick="document.getElementById('renewalFormCard').scrollIntoView({behavior:'smooth'})">
+          Start renewal
+        </button>
+      </div>
+
+      <!-- Renewal Form -->
+      <div class="renewal-form-card" id="renewalFormCard">
+        <h2>Renewal Application</h2>
+        <p>Your info is pre-filled. Choose your credit amount, installments, and upload a fresh bank statement.</p>
+
+        <!-- Pre-filled info -->
+        <div class="prefilled-section">
+          <h4>Your information <span class="prefilled-badge">Pre-filled</span></h4>
+          <div class="prefilled-grid">
+            <div class="prefilled-item">
+              <label>Full name</label>
+              <span id="renewalFullName">-</span>
+            </div>
+            <div class="prefilled-item">
+              <label>Email</label>
+              <span id="renewalEmail">-</span>
+            </div>
+            <div class="prefilled-item">
+              <label>Company</label>
+              <span id="renewalCompany">-</span>
+            </div>
+            <div class="prefilled-item">
+              <label>Mobile</label>
+              <span id="renewalMobile">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Credit Details -->
+        <div class="prefilled-section" style="background:#fff;border:1.5px solid #e5ede8;">
+          <h4>Credit Details <span style="color:var(--primary);font-size:0.75rem;font-weight:600;margin-left:0.5rem">3.5% monthly rate</span></h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.2rem;">
+            <div>
+              <label style="display:block;font-size:0.78rem;color:var(--text-muted);margin-bottom:0.4rem;">Amount of Credit Needed (EGP)</label>
+              <input type="range" id="renewalAmount" min="100000" max="5000000" step="50000" value="1500000"
+                style="width:100%;accent-color:var(--primary);cursor:pointer;" oninput="updateRenewalCalc()">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.3rem;">
+                <span style="font-size:0.75rem;color:var(--text-muted)">EGP 100K</span>
+                <span id="renewalAmountDisplay" style="font-size:1.3rem;font-weight:800;color:var(--primary)">EGP 1,500,000</span>
+                <span style="font-size:0.75rem;color:var(--text-muted)">EGP 5M</span>
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.78rem;color:var(--text-muted);margin-bottom:0.4rem;">Number of Installments</label>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.3rem;">
+                <button type="button" class="installment-btn" data-months="1.5" onclick="selectRenewalInstallment(1.5)">45 days</button>
+                <button type="button" class="installment-btn" data-months="3" onclick="selectRenewalInstallment(3)">3 months</button>
+                <button type="button" class="installment-btn active" data-months="6" onclick="selectRenewalInstallment(6)">6 months</button>
+                <button type="button" class="installment-btn" data-months="9" onclick="selectRenewalInstallment(9)">9 months</button>
+                <button type="button" class="installment-btn" data-months="12" onclick="selectRenewalInstallment(12)">12 months</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calculator -->
+          <div class="renewal-calc-box">
+            <div class="renewal-calc-grid">
+              <div>
+                <div class="renewal-calc-label" id="renewalInstLabel">Monthly Installment</div>
+                <div class="renewal-calc-value" id="renewalMonthly">EGP 302,500</div>
+              </div>
+              <div>
+                <div class="renewal-calc-label">Monthly Rate</div>
+                <div class="renewal-calc-value">3.5%</div>
+              </div>
+              <div>
+                <div class="renewal-calc-label">Total Repayment</div>
+                <div class="renewal-calc-value" id="renewalTotal">EGP 1,815,000</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bank Statement Upload -->
+        <div class="renewal-upload-zone" id="renewalUploadZone" onclick="document.getElementById('renewalBankStatements').click()">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem;">&#x1F3E6;</div>
+          <h3 style="font-size:1rem;margin-bottom:0.3rem;">Upload latest bank statement</h3>
+          <p style="color:var(--text-muted);font-size:0.88rem;">Last 3-6 months to verify current revenue. PDF format.</p>
+          <div style="margin-top:1rem;font-size:0.82rem;color:var(--primary);font-weight:600">Click to browse or drag & drop</div>
+          <input type="file" id="renewalBankStatements" accept=".pdf" multiple style="display:none" onchange="handleRenewalFileSelect(this)" />
+          <div id="renewalFileList" class="file-list" style="margin-top:0.8rem;text-align:left;"></div>
+        </div>
+
+        <!-- Summary -->
+        <div class="renewal-summary-box">
+          <h4>Your renewal summary</h4>
+          <div class="renewal-summary-grid">
+            <div>
+              <div class="renewal-summary-value" id="renewalSumAmount">EGP 1.5M</div>
+              <div class="renewal-summary-label">Credit Amount</div>
+            </div>
+            <div>
+              <div class="renewal-summary-value" id="renewalSumTenor">6 months</div>
+              <div class="renewal-summary-label">Installments</div>
+            </div>
+            <div>
+              <div class="renewal-summary-value">3.5%</div>
+              <div class="renewal-summary-label">Monthly Rate</div>
+            </div>
+            <div>
+              <div class="renewal-summary-value" id="renewalSumScore">-</div>
+              <div class="renewal-summary-label">Last Score</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="big-btn big-primary" id="renewalSubmitBtn" onclick="submitRenewal()" style="width:100%;padding:1rem;font-size:1.05rem">
+          Submit renewal request
+        </button>
+        <p style="text-align:center;font-size:0.82rem;color:var(--text-muted);margin-top:0.8rem">
+          Your data is encrypted and processed securely. Approval takes under 5 minutes.
+        </p>
       </div>
     </div>
   </div>
@@ -2497,6 +2938,8 @@
     var navActions = document.getElementById('navActions');
     var profileTab = document.getElementById('profileTab');
 
+    var renewalTab = document.getElementById('renewalTab');
+
     if (isLoggedIn()) {
       var initials = ((currentUser.firstname || '')[0] || '') + ((currentUser.lastname || '')[0] || '');
       initials = initials.toUpperCase() || 'FZ';
@@ -2508,11 +2951,13 @@
         '<button class="btn-outline" onclick="doLogout()">Sign out</button>' +
         '<button class="btn-primary" onclick="openTab(\'request\')">Request credit</button>';
       profileTab.style.display = '';
+      renewalTab.style.display = '';
     } else {
       navActions.innerHTML =
         '<button class="btn-outline" id="signInBtn" onclick="openModal(\'loginModal\')">Sign in</button>' +
         '<button class="btn-primary" onclick="openTab(\'request\')">Request credit</button>';
       profileTab.style.display = 'none';
+      renewalTab.style.display = 'none';
     }
   }
 
@@ -2675,13 +3120,18 @@
     document.getElementById('company').value = currentUser.company_name || '';
   }
 
-  // Override openTab to support profile + auto-fill
+  // Override openTab to support profile, renewal + auto-fill
   var _originalOpenTab = openTab;
   openTab = function(tabId) {
     _originalOpenTab(tabId);
 
     if (tabId === 'profile' && isLoggedIn()) {
       loadProfile();
+    }
+
+    if (tabId === 'renewal') {
+      loadRenewalData();
+      updateRenewalCalc();
     }
 
     if (tabId === 'request') {
@@ -2750,6 +3200,178 @@
       }
     } catch (e) {
       alert('Connection error. Please try again.');
+    }
+  }
+
+  // ========== RENEWAL SYSTEM ==========
+
+  var renewalSelectedMonths = 6;
+  var renewalBankFiles = [];
+  var MONTHLY_RATE = 0.035;
+
+  function selectRenewalInstallment(months) {
+    renewalSelectedMonths = months;
+    document.querySelectorAll('#renewalFormCard .installment-btn').forEach(function(btn) {
+      btn.classList.toggle('active', parseFloat(btn.dataset.months) === months);
+    });
+    updateRenewalCalc();
+  }
+
+  function updateRenewalCalc() {
+    var amount = parseInt(document.getElementById('renewalAmount').value);
+    var totalInterest = amount * MONTHLY_RATE * renewalSelectedMonths;
+    var totalRepayment = amount + totalInterest;
+    var isLump = renewalSelectedMonths === 1.5;
+    var monthly = isLump ? totalRepayment : totalRepayment / renewalSelectedMonths;
+
+    document.getElementById('renewalAmountDisplay').textContent = 'EGP ' + amount.toLocaleString();
+    document.getElementById('renewalInstLabel').textContent = isLump ? 'Total Due (45 days)' : 'Monthly Installment';
+    document.getElementById('renewalMonthly').textContent = 'EGP ' + Math.round(monthly).toLocaleString();
+    document.getElementById('renewalTotal').textContent = 'EGP ' + Math.round(totalRepayment).toLocaleString();
+
+    var amountM = amount >= 1000000 ? (amount / 1000000).toFixed(1).replace('.0','') + 'M' : (amount / 1000).toFixed(0) + 'K';
+    document.getElementById('renewalSumAmount').textContent = 'EGP ' + amountM;
+    document.getElementById('renewalSumTenor').textContent = isLump ? '45 days' : renewalSelectedMonths + ' months';
+  }
+
+  function handleRenewalFileSelect(input) {
+    var files = Array.from(input.files);
+    if (files.length > 0) {
+      renewalBankFiles = renewalBankFiles.concat(files);
+      document.getElementById('renewalUploadZone').classList.add('has-file');
+      renderRenewalFileList();
+    }
+  }
+
+  function renderRenewalFileList() {
+    var list = document.getElementById('renewalFileList');
+    list.innerHTML = '';
+    renewalBankFiles.forEach(function(file, i) {
+      var item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = '<div class="file-item-name">' + escapeHtml(file.name) + '</div>' +
+        '<button type="button" class="remove-file" onclick="removeRenewalFile(' + i + ')">Remove</button>';
+      list.appendChild(item);
+    });
+  }
+
+  function removeRenewalFile(index) {
+    renewalBankFiles.splice(index, 1);
+    renderRenewalFileList();
+    if (renewalBankFiles.length === 0) {
+      document.getElementById('renewalUploadZone').classList.remove('has-file');
+    }
+  }
+
+  async function loadRenewalData() {
+    if (!isLoggedIn()) {
+      document.getElementById('renewalNoHistory').style.display = 'block';
+      document.getElementById('renewalContent').style.display = 'none';
+      return;
+    }
+
+    // Pre-fill user info
+    document.getElementById('renewalFullName').textContent = (currentUser.firstname || '') + ' ' + (currentUser.lastname || '');
+    document.getElementById('renewalEmail').textContent = currentUser.email || '';
+    document.getElementById('renewalCompany').textContent = currentUser.company_name || '-';
+    document.getElementById('renewalMobile').textContent = currentUser.mobile || '-';
+
+    // Fetch application history
+    try {
+      var result = await apiCall({ action: 'profile' });
+      if (result.success && result.applications && result.applications.length > 0) {
+        var latest = result.applications[0]; // most recent
+        document.getElementById('renewalCreditAmount').innerHTML = 'EGP ' + Number(latest.credit_limit || 0).toLocaleString() + ' <small>last approved limit</small>';
+        document.getElementById('renewalAppRef').textContent = 'Application #' + (latest.id || '-');
+        document.getElementById('renewalAppDate').textContent = 'Assessed: ' + (latest.assessed_at ? latest.assessed_at.split(' ')[0] : '-');
+        document.getElementById('renewalDecision').textContent = latest.decision || '-';
+        document.getElementById('renewalTenor').textContent = (latest.tenor_months || '-') + ' months';
+        document.getElementById('renewalConfidence').textContent = (latest.confidence_score || '-') + '%';
+        document.getElementById('renewalSumScore').textContent = (latest.confidence_score || '-') + '%';
+
+        var badge = document.getElementById('renewalStatusBadge');
+        if (latest.decision === 'APPROVED') {
+          badge.className = 'status-badge status-approved';
+          badge.textContent = 'Approved';
+        } else if (latest.decision === 'UNDER_REVIEW') {
+          badge.className = 'status-badge status-review';
+          badge.textContent = 'Under Review';
+        } else {
+          badge.className = 'status-badge status-review';
+          badge.textContent = latest.decision || 'Pending';
+        }
+
+        document.getElementById('renewalNoHistory').style.display = 'none';
+        document.getElementById('renewalContent').style.display = 'block';
+      } else {
+        document.getElementById('renewalNoHistory').style.display = 'block';
+        document.getElementById('renewalContent').style.display = 'none';
+      }
+    } catch (e) {
+      console.error('Failed to load renewal data:', e);
+      document.getElementById('renewalNoHistory').style.display = 'block';
+      document.getElementById('renewalContent').style.display = 'none';
+    }
+  }
+
+  async function submitRenewal() {
+    if (!isLoggedIn()) {
+      openModal('loginModal');
+      return;
+    }
+
+    if (renewalBankFiles.length === 0) {
+      alert('Please upload at least one bank statement for the renewal assessment.');
+      return;
+    }
+
+    document.getElementById('loadingOverlay').classList.add('active');
+    document.getElementById('renewalSubmitBtn').disabled = true;
+
+    try {
+      var formData = new FormData();
+      formData.append('renewal', 'true');
+      formData.append('company', currentUser.company_name || '');
+      formData.append('firstname', currentUser.firstname || '');
+      formData.append('lastname', currentUser.lastname || '');
+      formData.append('email', currentUser.email || '');
+      formData.append('mobile', currentUser.mobile || '');
+      formData.append('revenue', document.getElementById('renewalAmount').value);
+      formData.append('requested_amount', document.getElementById('renewalAmount').value);
+      formData.append('requested_installments', renewalSelectedMonths.toString());
+      formData.append('industry', '');
+      formData.append('purpose', 'Credit line renewal');
+
+      renewalBankFiles.forEach(function(file) {
+        formData.append('bankStatements', file);
+      });
+
+      var response = await fetch(AZURE_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + authToken },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Server error: ' + response.status);
+      }
+
+      var result = await response.json();
+      document.getElementById('loadingOverlay').classList.remove('active');
+      document.getElementById('renewalSubmitBtn').disabled = false;
+
+      displayResults(result);
+
+      // Reset renewal form
+      renewalBankFiles = [];
+      document.getElementById('renewalFileList').innerHTML = '';
+      document.getElementById('renewalUploadZone').classList.remove('has-file');
+
+    } catch (error) {
+      console.error('Renewal error:', error);
+      document.getElementById('loadingOverlay').classList.remove('active');
+      document.getElementById('renewalSubmitBtn').disabled = false;
+      alert('Error processing your renewal request. Please try again.\n\nError: ' + error.message);
     }
   }
 
