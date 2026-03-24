@@ -2540,6 +2540,7 @@
         localStorage.setItem('finzeed_user', JSON.stringify(currentUser));
         closeModal('loginModal');
         updateNavbar();
+        autoFillCreditForm();
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
       } else if (result.email_not_verified) {
@@ -2665,6 +2666,15 @@
     }
   }
 
+  function autoFillCreditForm() {
+    if (!isLoggedIn()) return;
+    document.getElementById('firstname').value = currentUser.firstname || '';
+    document.getElementById('lastname').value = currentUser.lastname || '';
+    document.getElementById('email').value = currentUser.email || '';
+    document.getElementById('mobile').value = currentUser.mobile || '';
+    document.getElementById('company').value = currentUser.company_name || '';
+  }
+
   // Override openTab to support profile + auto-fill
   var _originalOpenTab = openTab;
   openTab = function(tabId) {
@@ -2674,12 +2684,8 @@
       loadProfile();
     }
 
-    if (tabId === 'request' && isLoggedIn()) {
-      document.getElementById('firstname').value = currentUser.firstname || '';
-      document.getElementById('lastname').value = currentUser.lastname || '';
-      document.getElementById('email').value = currentUser.email || '';
-      document.getElementById('mobile').value = currentUser.mobile || '';
-      document.getElementById('company').value = currentUser.company_name || '';
+    if (tabId === 'request') {
+      autoFillCreditForm();
     }
   };
 
@@ -2749,6 +2755,7 @@
 
   // Initialize auth state on page load
   updateNavbar();
+  autoFillCreditForm();
 </script>
 
 </body>
