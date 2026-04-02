@@ -1417,6 +1417,11 @@
       color: #b91c1c;
     }
 
+    .status-submitted {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
     .empty-state {
       text-align: center;
       padding: 3rem 1rem;
@@ -1860,6 +1865,7 @@
     <span data-tab="suppliers" onclick="openTab('suppliers')">Suppliers</span>
     <span data-tab="request" onclick="openTab('request')">Request credit</span>
     <span data-tab="renewal" onclick="openTab('renewal')" id="renewalTab" style="display:none">Renew Credit</span>
+    <span data-tab="contact" onclick="openTab('contact')">Contact Us</span>
     <span data-tab="profile" onclick="openTab('profile')" id="profileTab" style="display:none">My Profile</span>
   </div>
 
@@ -2030,7 +2036,7 @@
   <div class="section-inner">
     <div class="section-header">
       <h2>Request your Finzeed credit line</h2>
-      <p>Share your details and upload documents. Our AI will analyze your bank statements and provide instant credit assessment.</p>
+      <p>Share your details and upload documents. Our team will review your application and get back to you within 24-48 hours.</p>
     </div>
 
     <div class="request-layout">
@@ -2084,39 +2090,94 @@
             </div>
           </div>
 
+          <div class="form-grid-two">
+            <div class="form-group">
+              <label for="yearsInBusiness">Years in business *</label>
+              <select id="yearsInBusiness" name="yearsInBusiness" required>
+                <option value="">Select</option>
+                <option value="1">Less than 1 year</option>
+                <option value="2">1-2 years</option>
+                <option value="3">3-5 years</option>
+                <option value="7">5-10 years</option>
+                <option value="15">10+ years</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="monthlyInflows">Monthly inflows (EGP)</label>
+              <input type="number" id="monthlyInflows" name="monthlyInflows" placeholder="e.g. 500,000" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="businessDescription">Business description / activity *</label>
+            <textarea id="businessDescription" name="businessDescription" placeholder="Describe your business activities, products/services, and main customers" required></textarea>
+          </div>
+
           <div class="form-group">
             <label for="purpose">What do you need the credit for?</label>
             <textarea id="purpose" name="purpose" placeholder="e.g. Buying raw materials, importing inventory, supporting seasonal orders"></textarea>
+          </div>
+
+          <div class="form-grid-two">
+            <div class="form-group">
+              <label for="requestedAmount">Requested credit amount (EGP)</label>
+              <input type="number" id="requestedAmount" name="requestedAmount" placeholder="e.g. 1,000,000" min="100000" max="5000000" />
+            </div>
+            <div class="form-group">
+              <label for="requestedInstallments">Preferred installments</label>
+              <select id="requestedInstallments" name="requestedInstallments">
+                <option value="">Select</option>
+                <option value="45">45 days (lump sum)</option>
+                <option value="3">3 months</option>
+                <option value="6">6 months</option>
+                <option value="9">9 months</option>
+                <option value="12">12 months</option>
+              </select>
+            </div>
           </div>
 
           <div class="form-group">
             <label>Upload documents *</label>
 
             <div class="upload-row">
-              <div class="upload-box" onclick="document.getElementById('balanceSheet').click()">
-                <p>&#x1F4C4; Last balance sheet</p>
-                <small>Upload your most recent balance sheet.</small>
-                <div class="file-name" id="balanceSheetName"></div>
-                <input type="file" id="balanceSheet" accept="image/*,.pdf" onchange="handleFileSelect(this, 'balanceSheetName')" />
-              </div>
-
               <div class="upload-box" id="bankStatementsBox" onclick="document.getElementById('bankStatements').click()">
-                <p>&#x1F3E6; Bank statements *</p>
-                <small>Last 6-12 months in PDF format. Multiple files allowed.</small>
+                <p>Bank statements *</p>
+                <small>Last 3-12 months in PDF format. Multiple files allowed.</small>
                 <input type="file" id="bankStatements" accept=".pdf" multiple required onchange="handleBankStatementsSelect(this)" />
                 <div id="bankStatementsList" class="file-list"></div>
+              </div>
+              <div class="upload-box" onclick="document.getElementById('balanceSheet').click()">
+                <p>Balance sheet *</p>
+                <small>Upload your most recent balance sheet (PDF/Image).</small>
+                <div class="file-name" id="balanceSheetName"></div>
+                <input type="file" id="balanceSheet" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'balanceSheetName')" />
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <div class="upload-box" onclick="document.getElementById('nationalId').click()">
+                <p>National ID *</p>
+                <small>Front and back of your national ID card.</small>
+                <div class="file-name" id="nationalIdName"></div>
+                <input type="file" id="nationalId" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'nationalIdName')" />
+              </div>
+              <div class="upload-box" onclick="document.getElementById('iscore').click()">
+                <p>i-Score (Credit Bureau)</p>
+                <small>If available, upload your credit bureau report.</small>
+                <div class="file-name" id="iscoreName"></div>
+                <input type="file" id="iscore" accept="image/*,.pdf" onchange="handleFileSelect(this, 'iscoreName')" />
               </div>
             </div>
 
             <div class="upload-row">
               <div class="upload-box" onclick="document.getElementById('commercialReg').click()">
-                <p>&#x1F4C4; Commercial registration *</p>
+                <p>Commercial registration *</p>
                 <small>Company legal docs.</small>
                 <div class="file-name" id="commercialRegName"></div>
-                <input type="file" id="commercialReg" accept="image/*,.pdf" onchange="handleFileSelect(this, 'commercialRegName')" />
+                <input type="file" id="commercialReg" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'commercialRegName')" />
               </div>
               <div class="upload-box" onclick="document.getElementById('taxCard').click()">
-                <p>&#x1F4B0; Tax card</p>
+                <p>Tax card</p>
                 <small>Optional but recommended.</small>
                 <div class="file-name" id="taxCardName"></div>
                 <input type="file" id="taxCard" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxCardName')" />
@@ -2151,6 +2212,64 @@
           <li>Suppliers get paid on time, in full.</li>
           <li>You repay in instalments that match your cash cycle.</li>
         </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT US TAB -->
+<section id="contact" class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <h2>Contact Us</h2>
+      <p>Have questions? We'd love to hear from you. Get in touch with our team.</p>
+    </div>
+
+    <div class="request-layout">
+      <div class="request-form-card">
+        <h3>Send us a message</h3>
+        <form id="contactForm" onsubmit="handleContactSubmit(event)">
+          <div class="form-grid-two">
+            <div class="form-group">
+              <label for="contactName">Your name *</label>
+              <input type="text" id="contactName" placeholder="Enter your name" required />
+            </div>
+            <div class="form-group">
+              <label for="contactEmail">Email address *</label>
+              <input type="email" id="contactEmail" placeholder="Enter your email" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="contactSubject">Subject</label>
+            <input type="text" id="contactSubject" placeholder="What is this about?" />
+          </div>
+          <div class="form-group">
+            <label for="contactMessage">Message *</label>
+            <textarea id="contactMessage" placeholder="How can we help you?" rows="5" required></textarea>
+          </div>
+          <button type="submit" class="big-btn big-primary" id="contactSubmitBtn">Send message</button>
+        </form>
+        <div id="contactSuccess" style="display:none;text-align:center;padding:2rem;">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem;">&#10003;</div>
+          <h3 style="color:var(--primary);">Message Sent!</h3>
+          <p style="color:var(--text-muted);">Thank you for contacting us. We'll get back to you within 24 hours.</p>
+        </div>
+      </div>
+
+      <div class="request-side-card">
+        <h3>Get in touch</h3>
+        <div style="margin:1.5rem 0;">
+          <p style="margin-bottom:1rem;"><strong>Email</strong><br>
+            <a href="mailto:contact@finzeed.com" style="color:var(--primary);">contact@finzeed.com</a></p>
+          <p style="margin-bottom:1rem;"><strong>Phone</strong><br>
+            <a href="tel:+20xxxxxxxxx" style="color:var(--primary);">+20 xxx xxx xxxx</a></p>
+          <p style="margin-bottom:1rem;"><strong>Office</strong><br>
+            <span style="color:var(--text-muted);">Cairo, Egypt</span></p>
+        </div>
+
+        <h3>Business Hours</h3>
+        <p style="color:var(--text-muted);margin-top:0.5rem;">Sunday - Thursday: 9:00 AM - 5:00 PM</p>
+        <p style="color:var(--text-muted);">Friday - Saturday: Closed</p>
       </div>
     </div>
   </div>
@@ -2480,14 +2599,14 @@
         <h4>Company</h4>
         <a href="#">About us</a>
         <a href="#">Careers</a>
-        <a href="#">Contact</a>
+        <a href="#" onclick="openTab('contact'); return false;">Contact Us</a>
         <a href="#">Privacy policy</a>
       </div>
     </div>
   </div>
 
   <div class="footer-bottom">
-    <div>&copy; 2025 Finzeed. All rights reserved.</div>
+    <div>&copy; 2026 Finzeed. All rights reserved.</div>
     <div>Powered by <span>AI</span></div>
   </div>
 </footer>
@@ -2637,19 +2756,30 @@
       formData.append('revenue', document.getElementById('revenue').value);
       formData.append('industry', document.getElementById('industry').value);
       formData.append('purpose', document.getElementById('purpose').value || '');
+      formData.append('years_in_business', document.getElementById('yearsInBusiness').value || '');
+      formData.append('business_description', document.getElementById('businessDescription').value || '');
+      formData.append('requested_amount', document.getElementById('requestedAmount').value || '');
+      formData.append('requested_installments', document.getElementById('requestedInstallments').value || '');
+      formData.append('declared_monthly_inflows', document.getElementById('monthlyInflows').value || '');
 
       bankStatementFiles.forEach(function(file) {
         formData.append('bankStatements', file);
       });
 
       if (uploadedFiles['commercialReg']) {
-        formData.append('commercialReg', uploadedFiles['commercialReg']);
+        formData.append('commercial_registration', uploadedFiles['commercialReg']);
       }
       if (uploadedFiles['taxCard']) {
-        formData.append('taxCard', uploadedFiles['taxCard']);
+        formData.append('tax_card', uploadedFiles['taxCard']);
       }
       if (uploadedFiles['balanceSheet']) {
-        formData.append('balanceSheet', uploadedFiles['balanceSheet']);
+        formData.append('balance_sheet', uploadedFiles['balanceSheet']);
+      }
+      if (uploadedFiles['nationalId']) {
+        formData.append('national_id', uploadedFiles['nationalId']);
+      }
+      if (uploadedFiles['iscore']) {
+        formData.append('iscore', uploadedFiles['iscore']);
       }
 
       var fetchOptions = { method: 'POST', body: formData };
@@ -2679,98 +2809,43 @@
     }
   }
 
-  // Display results in modal
+  // Display results in modal — new flow: always show "Application Submitted"
   function displayResults(result) {
-    var decision = result.decision;
-    var creditLimit = result.credit_limit;
-    var tenorMonths = result.tenor_months;
-    var interestRate = result.interest_rate;
-    var confidenceScore = result.confidence_score;
-    var riskFactors = result.risk_factors || [];
-    var recommendations = result.recommendations || [];
     var applicationId = result.application_id;
-    var bankAnalysis = result.bank_analysis;
-
     var html = '';
 
-    if (decision === 'APPROVED') {
-      html += '<div class="decision-approved">' +
-        '<h2>Congratulations! Your Credit is Approved</h2>' +
-        '<p>Your credit line has been approved by our AI assessment.</p></div>';
-
-      html += '<div class="result-item">' +
-        '<h4>Approved Credit Limit</h4>' +
-        '<p style="font-size:1.8rem;font-weight:700;color:var(--primary);margin:0.5rem 0;">EGP ' +
-        Number(creditLimit).toLocaleString() + '</p></div>';
-
-      html += '<div class="result-item">' +
-        '<h4>Repayment Terms</h4>' +
-        '<p><strong>Tenor:</strong> ' + tenorMonths + ' months</p>' +
-        '<p><strong>Interest Rate:</strong> ' + interestRate + '% annually (' + (interestRate/12).toFixed(1) + '% monthly)</p>' +
-        '<p><strong>Confidence Score:</strong> ' + confidenceScore + '%</p></div>';
-
-      if (riskFactors.length > 0) {
-        html += '<div class="result-item"><h4>Assessment Factors</h4><ul style="margin:0.5rem 0;padding-left:1.5rem;">';
-        riskFactors.forEach(function(factor) {
-          html += '<li>' + escapeHtml(factor) + '</li>';
-        });
-        html += '</ul></div>';
-      }
-
-    } else if (decision === 'UNDER_REVIEW') {
-      html += '<div class="decision-pending">' +
-        '<h2>Application Under Review</h2>' +
-        '<p>Your application requires manual review by our team.</p></div>';
-
-      if (creditLimit && creditLimit > 0) {
-        html += '<div class="result-item">' +
-          '<h4>Preliminary Assessment</h4>' +
-          '<p><strong>Estimated Credit:</strong> EGP ' + Number(creditLimit).toLocaleString() + '</p>' +
-          '<p><strong>Tenor:</strong> ' + tenorMonths + ' months</p></div>';
-      }
-    } else {
-      html += '<div class="decision-rejected">' +
-        '<h2>Credit Application Status</h2>' +
-        '<p>We were unable to approve your application at this time.</p></div>';
-    }
-
-    if (recommendations.length > 0) {
-      html += '<div class="result-item"><h4>Recommendations</h4><ul style="margin:0.5rem 0;padding-left:1.5rem;">';
-      recommendations.forEach(function(rec) {
-        html += '<li>' + escapeHtml(rec) + '</li>';
-      });
-      html += '</ul></div>';
-    }
-
-    if (bankAnalysis && bankAnalysis.total_inflows) {
-      html += '<div class="result-item" style="background:var(--primary-light);border-left:4px solid var(--primary);">' +
-        '<h4>Bank Statement Analysis Complete</h4>' +
-        '<p><strong>Total Inflows:</strong> ' + Number(bankAnalysis.total_inflows).toLocaleString() + ' EGP</p>' +
-        '<p><strong>Monthly Average:</strong> ' + Number(bankAnalysis.monthly_average).toLocaleString() + ' EGP</p>' +
-        '<p><strong>Annual Estimate:</strong> ' + Number(bankAnalysis.annual_estimate).toLocaleString() + ' EGP</p>' +
-        '<p><strong>Transactions Analyzed:</strong> ' + bankAnalysis.transactions_found + '</p></div>';
-    } else if (bankAnalysis === null) {
-      html += '<div class="result-item" style="background:#fffbeb;border-left:4px solid #f59e0b;">' +
-        '<h4>Bank Statement Analysis Pending</h4>' +
-        '<p>Bank statements will be reviewed manually by our team.</p></div>';
-    }
+    html += '<div class="decision-approved" style="background:var(--primary-light);text-align:center;padding:2rem;border-radius:12px;margin-bottom:1.5rem;">' +
+      '<div style="font-size:3rem;margin-bottom:0.5rem;">&#10003;</div>' +
+      '<h2 style="color:var(--primary);margin-bottom:0.5rem;">Application Submitted Successfully!</h2>' +
+      '<p style="color:var(--text-muted);font-size:1.05rem;">Your application and documents have been received. Our team will review your application and get back to you.</p></div>';
 
     if (applicationId) {
       html += '<div class="result-item">' +
         '<h4>Application Reference</h4>' +
-        '<p><strong>Application ID:</strong> ' + applicationId + '</p>' +
-        '<p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.5rem;">Please keep this ID for future reference.</p></div>';
+        '<p style="font-size:1.3rem;font-weight:700;color:var(--primary);">#' + applicationId + '</p>' +
+        '<p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.3rem;">Save this reference number for tracking your application.</p></div>';
     }
+
+    html += '<div class="result-item">' +
+      '<h4>What happens next?</h4>' +
+      '<ul style="margin:0.5rem 0;padding-left:1.5rem;color:var(--text-muted);line-height:2;">' +
+      '<li>Our AI engine analyzes your bank statements and documents</li>' +
+      '<li>Our credit team reviews the analysis and your application</li>' +
+      '<li>You will receive an email notification with the decision</li>' +
+      '<li>Expected review time: <strong>24-48 hours</strong></li>' +
+      '</ul></div>';
 
     var email = document.getElementById('email').value;
     var mobile = document.getElementById('mobile').value;
 
     html += '<div class="result-item">' +
-      '<h4>Next Steps</h4>' +
-      '<p>Our team will contact you at:</p>' +
+      '<h4>Contact Information</h4>' +
+      '<p>We will contact you at:</p>' +
       '<p><strong>Email:</strong> ' + escapeHtml(email) + '</p>' +
-      '<p><strong>Mobile:</strong> ' + escapeHtml(mobile) + '</p>' +
-      '<p style="margin-top:0.5rem;">Expected contact time: <strong>24-48 hours</strong></p></div>';
+      '<p><strong>Mobile:</strong> ' + escapeHtml(mobile) + '</p></div>';
+
+    html += '<div class="result-item" style="text-align:center;padding:1rem;">' +
+      '<p style="color:var(--text-muted);">You can track your application status in <a href="#" onclick="openTab(\'profile\');document.getElementById(\'resultsModal\').classList.remove(\'active\');return false;" style="color:var(--primary);font-weight:600;">My Profile</a></p></div>';
 
     document.getElementById('resultsBody').innerHTML = html;
     document.getElementById('resultsModal').classList.add('active');
@@ -2784,6 +2859,42 @@
     document.querySelectorAll('.file-name').forEach(function(el) { el.textContent = ''; });
     document.getElementById('bankStatementsList').innerHTML = '';
     document.querySelectorAll('.upload-box').forEach(function(box) { box.classList.remove('has-file'); });
+  }
+
+  // ========== CONTACT US ==========
+
+  async function handleContactSubmit(event) {
+    event.preventDefault();
+    var btn = document.getElementById('contactSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    try {
+      var response = await fetch(AZURE_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'contact_us',
+          name: document.getElementById('contactName').value,
+          email: document.getElementById('contactEmail').value,
+          subject: document.getElementById('contactSubject').value,
+          message: document.getElementById('contactMessage').value
+        })
+      });
+
+      var result = await response.json();
+      if (result.success) {
+        document.getElementById('contactForm').style.display = 'none';
+        document.getElementById('contactSuccess').style.display = 'block';
+      } else {
+        alert(result.error || 'Failed to send message. Please try again.');
+      }
+    } catch (error) {
+      alert('Error sending message. Please try again or email us directly at contact@finzeed.com');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send message';
   }
 
   // ========== CHAT ==========
@@ -3084,22 +3195,23 @@
       var result = await apiCall({ action: 'profile' });
       if (result.success && result.applications && result.applications.length > 0) {
         var html = '<table class="app-table"><thead><tr>' +
-          '<th>Date</th><th>Company</th><th>Decision</th><th>Credit Limit</th><th>Confidence</th>' +
+          '<th>Date</th><th>Company</th><th>Status</th><th>Credit Limit</th><th>Tenor</th>' +
           '</tr></thead><tbody>';
 
         result.applications.forEach(function(app) {
           var statusClass = 'status-review';
-          var statusText = app.decision || 'Pending';
-          if (app.decision === 'APPROVED') { statusClass = 'status-approved'; statusText = 'Approved'; }
-          else if (app.decision === 'REJECTED') { statusClass = 'status-rejected'; statusText = 'Rejected'; }
-          else if (app.decision === 'UNDER_REVIEW') { statusText = 'Under Review'; }
+          var statusText = app.status || 'Submitted';
+          if (statusText === 'Approved') { statusClass = 'status-approved'; }
+          else if (statusText === 'Rejected') { statusClass = 'status-rejected'; }
+          else if (statusText === 'Under Review') { statusClass = 'status-review'; }
+          else { statusClass = 'status-submitted'; }
 
           html += '<tr>' +
             '<td>' + escapeHtml(app.assessed_at ? app.assessed_at.split(' ')[0] : '-') + '</td>' +
             '<td>' + escapeHtml(app.company_name || '-') + '</td>' +
-            '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+            '<td><span class="status-badge ' + statusClass + '">' + escapeHtml(statusText) + '</span></td>' +
             '<td>' + (app.credit_limit ? 'EGP ' + Number(app.credit_limit).toLocaleString() : '-') + '</td>' +
-            '<td>' + (app.confidence_score ? app.confidence_score + '%' : '-') + '</td>' +
+            '<td>' + (app.tenor_months ? app.tenor_months + ' months' : '-') + '</td>' +
             '</tr>';
         });
 

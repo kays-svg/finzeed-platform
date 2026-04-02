@@ -26,6 +26,11 @@ except ImportError:
     SendGridAPIClient = None
     Mail = None
 
+try:
+    import anthropic as anthropic_sdk
+except ImportError:
+    anthropic_sdk = None
+
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 # Initialize Azure clients
@@ -247,14 +252,24 @@ def handle_register(req_body):
         cursor.close()
         conn.close()
 
-        # Send verification email
+        # Send verification email — if SendGrid not configured, auto-verify
         email_sent = send_verification_email(email, verification_token, firstname)
+
+        if not email_sent:
+            # Auto-verify if email can't be sent
+            conn2 = get_db_connection()
+            cur2 = conn2.cursor()
+            cur2.execute("UPDATE users SET email_verified = 1, verification_token = NULL WHERE id = ?", (user_id,))
+            conn2.commit()
+            cur2.close()
+            conn2.close()
+            logging.info(f"Auto-verified {email} (SendGrid not configured)")
 
         return make_response({
             "success": True,
-            "email_verification_required": True,
+            "email_verification_required": email_sent,
             "email_sent": email_sent,
-            "message": "Account created! Please check your email to verify your account before signing in."
+            "message": "Account created!" if not email_sent else "Account created! Please check your email to verify your account before signing in."
         }, 201)
 
     except Exception as e:
@@ -443,24 +458,50 @@ def handle_profile(req, req_body):
             "mobile": user_row[5] or ''
         }
 
-        # Get application history
+        # Get application history — show customer-facing status, not AI decision
         applications = []
         try:
             cursor.execute("""
-                SELECT id, company_name, ai_decision, ai_credit_limit, ai_tenor_months,
-                       ai_confidence_score, ai_assessed_at
-                FROM applications WHERE user_id = ?
-                ORDER BY ai_assessed_at DESC
+                SELECT a.id, a.company_name, a.ai_assessed_at,
+                       COALESCE(a.application_status, 'submitted') as app_status,
+                       ad.decision as final_decision,
+                       ad.final_credit_limit, ad.final_tenor_months,
+                       a.customer_notified
+                FROM applications a
+                LEFT JOIN application_decisions ad ON a.id = ad.application_id
+                WHERE a.user_id = ?
+                ORDER BY a.ai_assessed_at DESC
             """, (payload['user_id'],))
             for app_row in cursor.fetchall():
+                app_status = app_row[3] or 'submitted'
+                final_decision = app_row[4]
+                notified = app_row[7]
+
+                # Customer sees friendly status
+                if final_decision == 'APPROVED' and notified:
+                    display_status = 'Approved'
+                    display_credit = float(app_row[5]) if app_row[5] else 0
+                    display_tenor = app_row[6] or 0
+                elif final_decision == 'REJECTED' and notified:
+                    display_status = 'Rejected'
+                    display_credit = 0
+                    display_tenor = 0
+                elif app_status in ('ai_reviewed', 'pending_review'):
+                    display_status = 'Under Review'
+                    display_credit = 0
+                    display_tenor = 0
+                else:
+                    display_status = 'Submitted'
+                    display_credit = 0
+                    display_tenor = 0
+
                 applications.append({
                     "id": app_row[0],
                     "company_name": app_row[1] or '',
-                    "decision": app_row[2] or '',
-                    "credit_limit": float(app_row[3]) if app_row[3] else 0,
-                    "tenor_months": app_row[4] or 0,
-                    "confidence_score": float(app_row[5]) if app_row[5] else 0,
-                    "assessed_at": str(app_row[6]) if app_row[6] else ''
+                    "status": display_status,
+                    "credit_limit": display_credit,
+                    "tenor_months": display_tenor,
+                    "assessed_at": str(app_row[2]) if app_row[2] else ''
                 })
         except Exception as e:
             logging.warning(f"Could not fetch applications: {str(e)}")
@@ -518,6 +559,595 @@ def handle_update_profile(req, req_body):
         logging.error(f"Profile update error: {str(e)}")
         return make_response({"error": "Could not update profile"}, 500)
 
+# ========== BACKOFFICE HANDLERS ==========
+
+def verify_backoffice_token(req):
+    """Verify JWT for backoffice users — checks backoffice_users table"""
+    if not jwt:
+        return None
+    auth_header = req.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None
+    token = auth_header[7:]
+    try:
+        secret = os.environ.get('JWT_SECRET')
+        if not secret:
+            return None
+        payload = jwt.decode(token, secret, algorithms=['HS256'])
+        if payload.get('user_type') != 'backoffice':
+            return None
+        return payload
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
+
+
+def handle_backoffice_login(req_body):
+    """Handle backoffice user login"""
+    email = req_body.get('email', '').strip().lower()
+    password = req_body.get('password', '')
+
+    if not email or not password:
+        return make_response({"error": "Email and password are required"}, 400)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ensure_new_tables(cursor)
+
+        cursor.execute("""
+            SELECT id, email, password_hash, password_salt, fullname, role, is_active
+            FROM backoffice_users WHERE email = ?
+        """, (email,))
+        row = cursor.fetchone()
+
+        if not row or not row[2]:
+            cursor.close()
+            conn.close()
+            return make_response({"error": "Invalid email or password"}, 401)
+
+        if not row[6]:
+            cursor.close()
+            conn.close()
+            return make_response({"error": "Account deactivated"}, 403)
+
+        stored_hash, stored_salt = row[2], row[3]
+        check_hash, _ = hash_password(password, stored_salt)
+
+        if check_hash != stored_hash:
+            cursor.close()
+            conn.close()
+            return make_response({"error": "Invalid email or password"}, 401)
+
+        # Update last login
+        cursor.execute("UPDATE backoffice_users SET last_login = GETDATE() WHERE id = ?", (row[0],))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Create JWT with backoffice marker
+        secret = os.environ.get('JWT_SECRET')
+        token = jwt.encode({
+            'user_id': row[0],
+            'email': row[1],
+            'user_type': 'backoffice',
+            'role': row[5] or 'analyst',
+            'exp': datetime.now(timezone.utc) + timedelta(days=1),
+            'iat': datetime.now(timezone.utc)
+        }, secret, algorithm='HS256')
+
+        log_audit(row[0], 'backoffice', 'login', 'backoffice_users', row[0])
+
+        return make_response({
+            "success": True,
+            "token": token,
+            "user": {
+                "id": row[0],
+                "email": row[1],
+                "fullname": row[4] or '',
+                "role": row[5] or 'analyst'
+            }
+        })
+
+    except Exception as e:
+        logging.error(f"Backoffice login error: {str(e)}")
+        return make_response({"error": "Login failed"}, 500)
+
+
+def handle_backoffice_dashboard(req, req_body):
+    """Get backoffice dashboard statistics"""
+    payload = verify_backoffice_token(req)
+    if not payload:
+        return make_response({"error": "Unauthorized"}, 401)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        stats = {}
+
+        # Total applications
+        cursor.execute("SELECT COUNT(*) FROM applications")
+        stats['total_applications'] = cursor.fetchone()[0]
+
+        # By status
+        cursor.execute("""
+            SELECT COALESCE(application_status, 'submitted'), COUNT(*)
+            FROM applications GROUP BY application_status
+        """)
+        status_counts = {}
+        for row in cursor.fetchall():
+            status_counts[row[0] or 'submitted'] = row[1]
+        stats['by_status'] = status_counts
+
+        # Today's applications
+        cursor.execute("SELECT COUNT(*) FROM applications WHERE CAST(ai_assessed_at AS DATE) = CAST(GETDATE() AS DATE)")
+        stats['today'] = cursor.fetchone()[0]
+
+        # This week
+        cursor.execute("SELECT COUNT(*) FROM applications WHERE ai_assessed_at >= DATEADD(day, -7, GETDATE())")
+        stats['this_week'] = cursor.fetchone()[0]
+
+        # Total approved credit
+        cursor.execute("SELECT COALESCE(SUM(final_credit_limit), 0) FROM application_decisions WHERE decision = 'APPROVED'")
+        stats['total_credit_approved'] = float(cursor.fetchone()[0])
+
+        # Recent applications
+        cursor.execute("""
+            SELECT TOP 10 a.id, a.company_name, a.email, a.annual_revenue,
+                   COALESCE(a.application_status, 'submitted'), a.ai_assessed_at,
+                   cr.ai_recommendation, cr.confidence_score
+            FROM applications a
+            LEFT JOIN credit_reports cr ON a.id = cr.application_id
+            ORDER BY a.ai_assessed_at DESC
+        """)
+        recent = []
+        for row in cursor.fetchall():
+            recent.append({
+                "id": row[0],
+                "company_name": row[1] or '',
+                "email": row[2] or '',
+                "annual_revenue": float(row[3]) if row[3] else 0,
+                "status": row[4] or 'submitted',
+                "assessed_at": str(row[5]) if row[5] else '',
+                "ai_recommendation": row[6] or '',
+                "confidence_score": float(row[7]) if row[7] else 0
+            })
+        stats['recent_applications'] = recent
+
+        cursor.close()
+        conn.close()
+
+        return make_response({"success": True, "stats": stats})
+
+    except Exception as e:
+        logging.error(f"Dashboard error: {str(e)}")
+        return make_response({"error": "Could not load dashboard"}, 500)
+
+
+def handle_backoffice_applications(req, req_body):
+    """List all applications for backoffice with filters"""
+    payload = verify_backoffice_token(req)
+    if not payload:
+        return make_response({"error": "Unauthorized"}, 401)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        status_filter = req_body.get('status_filter')
+        search = req_body.get('search', '').strip()
+        page = int(req_body.get('page', 1))
+        per_page = int(req_body.get('per_page', 20))
+        offset = (page - 1) * per_page
+
+        where_clauses = []
+        params = []
+
+        if status_filter:
+            where_clauses.append("COALESCE(a.application_status, 'submitted') = ?")
+            params.append(status_filter)
+
+        if search:
+            where_clauses.append("(a.company_name LIKE ? OR a.email LIKE ?)")
+            params.extend([f'%{search}%', f'%{search}%'])
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Count total
+        cursor.execute(f"SELECT COUNT(*) FROM applications a {where_sql}", params)
+        total = cursor.fetchone()[0]
+
+        # Get applications
+        cursor.execute(f"""
+            SELECT a.id, a.company_name, a.firstname, a.lastname, a.email, a.mobile,
+                   a.industry, a.annual_revenue, COALESCE(a.application_status, 'submitted'),
+                   a.ai_assessed_at, a.ai_decision, a.ai_credit_limit, a.ai_confidence_score,
+                   cr.ai_recommendation, cr.confidence_score as claude_confidence,
+                   cr.executive_summary,
+                   ad.decision as final_decision, ad.decided_at
+            FROM applications a
+            LEFT JOIN credit_reports cr ON a.id = cr.application_id
+            LEFT JOIN application_decisions ad ON a.id = ad.application_id
+            {where_sql}
+            ORDER BY a.ai_assessed_at DESC
+            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """, params + [offset, per_page])
+
+        applications = []
+        for row in cursor.fetchall():
+            applications.append({
+                "id": row[0],
+                "company_name": row[1] or '',
+                "firstname": row[2] or '',
+                "lastname": row[3] or '',
+                "email": row[4] or '',
+                "mobile": row[5] or '',
+                "industry": row[6] or '',
+                "annual_revenue": float(row[7]) if row[7] else 0,
+                "status": row[8] or 'submitted',
+                "assessed_at": str(row[9]) if row[9] else '',
+                "ai_decision": row[10] or '',
+                "ai_credit_limit": float(row[11]) if row[11] else 0,
+                "ai_confidence": float(row[12]) if row[12] else 0,
+                "claude_recommendation": row[13] or '',
+                "claude_confidence": float(row[14]) if row[14] else 0,
+                "executive_summary": row[15] or '',
+                "final_decision": row[16] or '',
+                "decided_at": str(row[17]) if row[17] else ''
+            })
+
+        cursor.close()
+        conn.close()
+
+        return make_response({
+            "success": True,
+            "applications": applications,
+            "total": total,
+            "page": page,
+            "per_page": per_page
+        })
+
+    except Exception as e:
+        logging.error(f"Applications list error: {str(e)}")
+        return make_response({"error": "Could not load applications"}, 500)
+
+
+def handle_backoffice_application_detail(req, req_body):
+    """Get full application detail with AI report for backoffice"""
+    payload = verify_backoffice_token(req)
+    if not payload:
+        return make_response({"error": "Unauthorized"}, 401)
+
+    app_id = req_body.get('application_id')
+    if not app_id:
+        return make_response({"error": "application_id required"}, 400)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Application details
+        cursor.execute("""
+            SELECT id, user_id, company_name, firstname, lastname, email, mobile,
+                   industry, annual_revenue, purpose, status, application_status,
+                   ai_decision, ai_credit_limit, ai_tenor_months, ai_interest_rate,
+                   ai_confidence_score, ai_risk_factors, ai_recommendations, ai_assessed_at,
+                   requested_amount, requested_installments, years_in_business,
+                   business_description, declared_monthly_inflows
+            FROM applications WHERE id = ?
+        """, (app_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            cursor.close()
+            conn.close()
+            return make_response({"error": "Application not found"}, 404)
+
+        application = {
+            "id": row[0], "user_id": row[1], "company_name": row[2] or '',
+            "firstname": row[3] or '', "lastname": row[4] or '',
+            "email": row[5] or '', "mobile": row[6] or '',
+            "industry": row[7] or '', "annual_revenue": float(row[8]) if row[8] else 0,
+            "purpose": row[9] or '', "status": row[10] or '',
+            "application_status": row[11] or 'submitted',
+            "ai_decision": row[12] or '', "ai_credit_limit": float(row[13]) if row[13] else 0,
+            "ai_tenor_months": row[14] or 0, "ai_interest_rate": float(row[15]) if row[15] else 0,
+            "ai_confidence_score": float(row[16]) if row[16] else 0,
+            "ai_risk_factors": json.loads(row[17]) if row[17] else [],
+            "ai_recommendations": json.loads(row[18]) if row[18] else [],
+            "assessed_at": str(row[19]) if row[19] else '',
+            "requested_amount": float(row[20]) if row[20] else 0,
+            "requested_installments": row[21] or 0,
+            "years_in_business": row[22] or 0,
+            "business_description": row[23] or '',
+            "declared_monthly_inflows": float(row[24]) if row[24] else 0
+        }
+
+        # Claude credit report
+        cursor.execute("""
+            SELECT ai_recommendation, confidence_score, recommended_limit, recommended_tenor,
+                   revenue_analysis, bank_analysis, balance_sheet_analysis, iscore_analysis,
+                   identity_verification, risk_factors, positive_factors, executive_summary,
+                   full_report, created_at
+            FROM credit_reports WHERE application_id = ?
+            ORDER BY created_at DESC
+        """, (app_id,))
+        cr_row = cursor.fetchone()
+
+        claude_report = None
+        if cr_row:
+            claude_report = {
+                "recommendation": cr_row[0] or '',
+                "confidence_score": float(cr_row[1]) if cr_row[1] else 0,
+                "recommended_limit": float(cr_row[2]) if cr_row[2] else 0,
+                "recommended_tenor": cr_row[3] or 0,
+                "revenue_analysis": json.loads(cr_row[4]) if cr_row[4] else {},
+                "bank_analysis": json.loads(cr_row[5]) if cr_row[5] else {},
+                "balance_sheet_analysis": json.loads(cr_row[6]) if cr_row[6] else {},
+                "iscore_analysis": json.loads(cr_row[7]) if cr_row[7] else {},
+                "identity_verification": json.loads(cr_row[8]) if cr_row[8] else {},
+                "risk_factors": json.loads(cr_row[9]) if cr_row[9] else [],
+                "positive_factors": json.loads(cr_row[10]) if cr_row[10] else [],
+                "executive_summary": cr_row[11] or '',
+                "full_report": json.loads(cr_row[12]) if cr_row[12] else {},
+                "created_at": str(cr_row[13]) if cr_row[13] else ''
+            }
+
+        # Documents
+        cursor.execute("""
+            SELECT id, document_type, filename, blob_url, file_size
+            FROM documents WHERE application_id = ?
+        """, (app_id,))
+        documents = []
+        for doc_row in cursor.fetchall():
+            documents.append({
+                "id": doc_row[0], "type": doc_row[1] or '',
+                "filename": doc_row[2] or '', "blob_url": doc_row[3] or '',
+                "file_size": doc_row[4] or 0
+            })
+
+        # Previous decisions
+        cursor.execute("""
+            SELECT ad.id, ad.decision, ad.final_credit_limit, ad.final_tenor_months,
+                   ad.final_interest_rate, ad.override_reason, ad.internal_notes,
+                   ad.customer_notified, ad.decided_at, bu.fullname
+            FROM application_decisions ad
+            LEFT JOIN backoffice_users bu ON ad.decided_by = bu.id
+            WHERE ad.application_id = ?
+            ORDER BY ad.decided_at DESC
+        """, (app_id,))
+        decisions = []
+        for d_row in cursor.fetchall():
+            decisions.append({
+                "id": d_row[0], "decision": d_row[1] or '',
+                "final_credit_limit": float(d_row[2]) if d_row[2] else 0,
+                "final_tenor_months": d_row[3] or 0,
+                "final_interest_rate": float(d_row[4]) if d_row[4] else 0,
+                "override_reason": d_row[5] or '', "internal_notes": d_row[6] or '',
+                "customer_notified": bool(d_row[7]),
+                "decided_at": str(d_row[8]) if d_row[8] else '',
+                "decided_by": d_row[9] or ''
+            })
+
+        cursor.close()
+        conn.close()
+
+        return make_response({
+            "success": True,
+            "application": application,
+            "claude_report": claude_report,
+            "documents": documents,
+            "decisions": decisions
+        })
+
+    except Exception as e:
+        logging.error(f"Application detail error: {str(e)}")
+        return make_response({"error": "Could not load application"}, 500)
+
+
+def handle_backoffice_decide(req, req_body):
+    """Approve/Reject an application from backoffice"""
+    payload = verify_backoffice_token(req)
+    if not payload:
+        return make_response({"error": "Unauthorized"}, 401)
+
+    if payload.get('role') == 'viewer':
+        return make_response({"error": "Viewers cannot make decisions"}, 403)
+
+    app_id = req_body.get('application_id')
+    decision = req_body.get('decision')  # APPROVED, REJECTED, REQUEST_INFO
+    if not app_id or not decision:
+        return make_response({"error": "application_id and decision required"}, 400)
+
+    if decision not in ('APPROVED', 'REJECTED', 'REQUEST_INFO'):
+        return make_response({"error": "Invalid decision"}, 400)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Insert decision
+        cursor.execute("""
+            INSERT INTO application_decisions (
+                application_id, decided_by, decision, final_credit_limit,
+                final_tenor_months, final_interest_rate, override_reason,
+                internal_notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            app_id, payload['user_id'], decision,
+            req_body.get('final_credit_limit'),
+            req_body.get('final_tenor_months'),
+            req_body.get('final_interest_rate', 42.0),
+            req_body.get('override_reason', ''),
+            req_body.get('internal_notes', '')
+        ))
+
+        # Update application status
+        new_status = 'approved' if decision == 'APPROVED' else 'rejected' if decision == 'REJECTED' else 'info_requested'
+        cursor.execute("""
+            UPDATE applications SET application_status = ? WHERE id = ?
+        """, (new_status, app_id))
+
+        conn.commit()
+
+        # Audit log
+        log_audit(payload['user_id'], 'backoffice', f'decision_{decision.lower()}',
+                  'application', app_id, json.dumps({
+                      "decision": decision,
+                      "credit_limit": req_body.get('final_credit_limit'),
+                      "override_reason": req_body.get('override_reason', '')
+                  }))
+
+        cursor.close()
+        conn.close()
+
+        return make_response({
+            "success": True,
+            "message": f"Application {decision.lower()} successfully",
+            "status": new_status
+        })
+
+    except Exception as e:
+        logging.error(f"Decision error: {str(e)}")
+        return make_response({"error": "Could not save decision"}, 500)
+
+
+def handle_backoffice_suppliers(req, req_body):
+    """CRUD operations for suppliers (backoffice)"""
+    payload = verify_backoffice_token(req)
+    if not payload:
+        return make_response({"error": "Unauthorized"}, 401)
+
+    operation = req_body.get('operation', 'list')
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ensure_new_tables(cursor)
+
+        if operation == 'list':
+            cursor.execute("""
+                SELECT id, name, category, location, invoice_range_min, invoice_range_max,
+                       payment_terms, status, is_verified, created_at
+                FROM suppliers ORDER BY name
+            """)
+            suppliers = []
+            for row in cursor.fetchall():
+                suppliers.append({
+                    "id": row[0], "name": row[1] or '', "category": row[2] or '',
+                    "location": row[3] or '',
+                    "invoice_range_min": float(row[4]) if row[4] else 0,
+                    "invoice_range_max": float(row[5]) if row[5] else 0,
+                    "payment_terms": row[6] or '', "status": row[7] or 'Active',
+                    "is_verified": bool(row[8]),
+                    "created_at": str(row[9]) if row[9] else ''
+                })
+            cursor.close()
+            conn.close()
+            return make_response({"success": True, "suppliers": suppliers})
+
+        elif operation == 'create':
+            if payload.get('role') == 'viewer':
+                return make_response({"error": "Insufficient permissions"}, 403)
+            cursor.execute("""
+                INSERT INTO suppliers (name, category, location, invoice_range_min,
+                    invoice_range_max, payment_terms, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                req_body.get('name'), req_body.get('category'),
+                req_body.get('location'), req_body.get('invoice_range_min'),
+                req_body.get('invoice_range_max'), req_body.get('payment_terms'),
+                req_body.get('status', 'Active')
+            ))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return make_response({"success": True, "message": "Supplier created"}, 201)
+
+        elif operation == 'update':
+            if payload.get('role') == 'viewer':
+                return make_response({"error": "Insufficient permissions"}, 403)
+            supplier_id = req_body.get('supplier_id')
+            cursor.execute("""
+                UPDATE suppliers SET name = ?, category = ?, location = ?,
+                    invoice_range_min = ?, invoice_range_max = ?,
+                    payment_terms = ?, status = ?, updated_at = GETDATE()
+                WHERE id = ?
+            """, (
+                req_body.get('name'), req_body.get('category'),
+                req_body.get('location'), req_body.get('invoice_range_min'),
+                req_body.get('invoice_range_max'), req_body.get('payment_terms'),
+                req_body.get('status', 'Active'), supplier_id
+            ))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return make_response({"success": True, "message": "Supplier updated"})
+
+        elif operation == 'delete':
+            if payload.get('role') != 'admin':
+                return make_response({"error": "Only admins can delete suppliers"}, 403)
+            cursor.execute("DELETE FROM suppliers WHERE id = ?", (req_body.get('supplier_id'),))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return make_response({"success": True, "message": "Supplier deleted"})
+
+        cursor.close()
+        conn.close()
+        return make_response({"error": "Invalid operation"}, 400)
+
+    except Exception as e:
+        logging.error(f"Supplier error: {str(e)}")
+        return make_response({"error": "Supplier operation failed"}, 500)
+
+
+def handle_contact_us(req_body):
+    """Handle contact us form submissions"""
+    name = req_body.get('name', '').strip()
+    email = req_body.get('email', '').strip()
+    subject = req_body.get('subject', '').strip()
+    message = req_body.get('message', '').strip()
+
+    if not name or not email or not message:
+        return make_response({"error": "Name, email, and message are required"}, 400)
+
+    logging.info(f"Contact form submission from {name} ({email}): {subject}")
+
+    # Try to send via SendGrid
+    sendgrid_key = os.environ.get('SENDGRID_API_KEY')
+    contact_email = os.environ.get('CONTACT_EMAIL', 'contact@finzeed.com')
+
+    if sendgrid_key and SendGridAPIClient:
+        try:
+            import html as html_module
+            safe_name = html_module.escape(name)
+            safe_subject = html_module.escape(subject or 'Contact Form')
+            safe_message = html_module.escape(message)
+
+            mail = Mail(
+                from_email=os.environ.get('SENDGRID_SENDER_EMAIL', 'noreply@finzeed.com'),
+                to_emails=contact_email,
+                subject=f'Finzeed Contact: {safe_subject}',
+                html_content=f"""
+                <h3>New Contact Form Submission</h3>
+                <p><strong>Name:</strong> {safe_name}</p>
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Subject:</strong> {safe_subject}</p>
+                <p><strong>Message:</strong><br>{safe_message}</p>
+                """
+            )
+            sg = SendGridAPIClient(sendgrid_key)
+            sg.send(mail)
+        except Exception as e:
+            logging.warning(f"Contact email failed: {str(e)}")
+
+    return make_response({
+        "success": True,
+        "message": "Thank you for contacting us! We'll get back to you within 24 hours."
+    })
+
+
 # ========== EXISTING HANDLERS ==========
 
 def save_application_to_db(data, ai_assessment):
@@ -525,11 +1155,14 @@ def save_application_to_db(data, ai_assessment):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
+        # Ensure new schema tables exist
+        ensure_new_tables(cursor)
+
         # 1. Insert or update user
         cursor.execute("""
             IF EXISTS (SELECT 1 FROM users WHERE email = ?)
-                UPDATE users 
+                UPDATE users
                 SET company_name = ?, firstname = ?, lastname = ?, mobile = ?, updated_at = GETDATE()
                 WHERE email = ?
             ELSE
@@ -540,31 +1173,42 @@ def save_application_to_db(data, ai_assessment):
             data['company'], data['firstname'], data['lastname'], data['mobile'], data['email'],
             data['email'], data['company'], data['firstname'], data['lastname'], data['mobile']
         ))
-        
+
         # Get user_id
         cursor.execute("SELECT id FROM users WHERE email = ?", (data['email'],))
         user_id = cursor.fetchone()[0]
-        
+
+        # Determine application_status based on Claude analysis
+        claude_report = ai_assessment.get('claude_report')
+        app_status = 'ai_reviewed' if claude_report else 'submitted'
+
         # 2. Insert application
         cursor.execute("""
             INSERT INTO applications (
                 user_id, company_name, firstname, lastname, email, mobile,
-                industry, annual_revenue, purpose, status,
+                industry, annual_revenue, purpose, status, application_status,
                 ai_decision, ai_credit_limit, ai_tenor_months, ai_interest_rate,
-                ai_confidence_score, ai_risk_factors, ai_recommendations, ai_assessed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+                ai_confidence_score, ai_risk_factors, ai_recommendations, ai_assessed_at,
+                requested_amount, requested_installments,
+                years_in_business, business_description, declared_monthly_inflows
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?, ?, ?, ?)
         """, (
             user_id, data['company'], data['firstname'], data['lastname'],
-            data['email'], data['mobile'], data.get('industry'), 
+            data['email'], data['mobile'], data.get('industry'),
             data.get('revenue'), data.get('purpose'),
-            'ai_assessment',
+            'ai_assessment', app_status,
             ai_assessment.get('decision'),
             ai_assessment.get('credit_limit'),
             ai_assessment.get('tenor_months'),
             ai_assessment.get('interest_rate'),
             ai_assessment.get('confidence_score'),
             json.dumps(ai_assessment.get('risk_factors', [])),
-            json.dumps(ai_assessment.get('recommendations', []))
+            json.dumps(ai_assessment.get('recommendations', [])),
+            data.get('requested_amount'),
+            data.get('requested_installments'),
+            data.get('years_in_business'),
+            data.get('business_description'),
+            data.get('declared_monthly_inflows')
         ))
         
         # Get application_id
@@ -654,6 +1298,22 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
             if action == 'resend_verification':
                 return handle_resend_verification(req_body)
 
+            # Backoffice actions
+            if action == 'backoffice_login':
+                return handle_backoffice_login(req_body)
+            if action == 'backoffice_applications':
+                return handle_backoffice_applications(req, req_body)
+            if action == 'backoffice_application_detail':
+                return handle_backoffice_application_detail(req, req_body)
+            if action == 'backoffice_decide':
+                return handle_backoffice_decide(req, req_body)
+            if action == 'backoffice_dashboard':
+                return handle_backoffice_dashboard(req, req_body)
+            if action == 'backoffice_suppliers':
+                return handle_backoffice_suppliers(req, req_body)
+            if action == 'contact_us':
+                return handle_contact_us(req_body)
+
             # Check if it's a chat request
             if req_body.get('chat'):
                 return handle_chat(req_body)
@@ -686,7 +1346,12 @@ def handle_form_data_request(req):
         revenue = req.form.get('revenue', '0')
         industry = req.form.get('industry', '')
         purpose = req.form.get('purpose', '')
-        
+        years_in_business = req.form.get('years_in_business', '')
+        business_description = req.form.get('business_description', '')
+        requested_amount = req.form.get('requested_amount', '')
+        requested_installments = req.form.get('requested_installments', '')
+        declared_monthly_inflows = req.form.get('declared_monthly_inflows', '0')
+
         logging.info(f"Form data - Company: {company}, Email: {email}, Revenue: {revenue}")
         
         # Convert revenue to float
@@ -695,11 +1360,18 @@ def handle_form_data_request(req):
         except:
             revenue = 0
         
-        # Get uploaded files
+        # Get uploaded files — all document types
         bank_statements = req.files.getlist('bank_statements') or req.files.getlist('bankStatements') or []
-        
-        logging.info(f"Received {len(bank_statements)} bank statement(s)")
-        
+        national_id_files = req.files.getlist('national_id') or req.files.getlist('nationalId') or []
+        iscore_files = req.files.getlist('iscore') or req.files.getlist('iScore') or []
+        balance_sheet_files = req.files.getlist('balance_sheet') or req.files.getlist('balanceSheet') or []
+        commercial_reg_files = req.files.getlist('commercial_registration') or req.files.getlist('commercialRegistration') or []
+        tax_card_files = req.files.getlist('tax_card') or req.files.getlist('taxCard') or []
+
+        logging.info(f"Received files: {len(bank_statements)} bank statements, "
+                     f"{len(national_id_files)} national ID, {len(iscore_files)} i-Score, "
+                     f"{len(balance_sheet_files)} balance sheet")
+
         # Prepare data structure
         data = {
             'company': company,
@@ -710,8 +1382,18 @@ def handle_form_data_request(req):
             'revenue': revenue,
             'industry': industry,
             'purpose': purpose,
+            'years_in_business': years_in_business,
+            'business_description': business_description,
+            'requested_amount': requested_amount,
+            'requested_installments': requested_installments,
+            'declared_monthly_inflows': declared_monthly_inflows,
             'documents': {
-                'bank_statements': []
+                'bank_statements': [],
+                'national_id': [],
+                'iscore': [],
+                'balance_sheet': [],
+                'commercial_registration': [],
+                'tax_card': []
             }
         }
         
@@ -727,26 +1409,48 @@ def handle_form_data_request(req):
             })
             
             logging.info(f"Added bank statement: {bank_statement.filename} ({len(file_content)} bytes)")
-        
-        # Perform AI assessment with bank analysis
+
+        # Process additional document types (store for backoffice review)
+        for doc_type, file_list in [
+            ('national_id', national_id_files),
+            ('iscore', iscore_files),
+            ('balance_sheet', balance_sheet_files),
+            ('commercial_registration', commercial_reg_files),
+            ('tax_card', tax_card_files)
+        ]:
+            for doc_file in file_list:
+                file_content = doc_file.read()
+                file_base64 = base64.b64encode(file_content).decode('utf-8')
+                data['documents'][doc_type].append({
+                    'filename': doc_file.filename,
+                    'content': file_base64,
+                    'size': len(file_content)
+                })
+                logging.info(f"Added {doc_type}: {doc_file.filename} ({len(file_content)} bytes)")
+
+        # Perform AI assessment with bank analysis (OpenAI extraction + Claude analysis)
         ai_assessment = perform_ai_assessment(data)
-        
+
         # Save to database
         db_result = save_application_to_db(data, ai_assessment)
-        
-        # Prepare response
+
+        # Save Claude credit report if available
+        application_id = db_result.get('application_id')
+        claude_report = ai_assessment.get('claude_report')
+        if claude_report and application_id:
+            save_credit_report(application_id, claude_report)
+            log_audit(None, 'system', 'ai_analysis_complete', 'application', application_id,
+                      json.dumps({"recommendation": claude_report.get('recommendation')}))
+
+        # NEW FLOW: Customer sees "Application Submitted" — NOT the AI decision
+        # The AI decision is stored internally for the backoffice team
         response_data = {
-            'decision': ai_assessment['decision'],
-            'credit_limit': ai_assessment['credit_limit'],
-            'tenor_months': ai_assessment['tenor_months'],
-            'interest_rate': ai_assessment['interest_rate'],
-            'confidence_score': ai_assessment['confidence_score'],
-            'risk_factors': ai_assessment['risk_factors'],
-            'recommendations': ai_assessment['recommendations'],
-            'application_id': db_result.get('application_id'),
-            'bank_analysis': ai_assessment.get('bank_analysis')
+            'status': 'submitted',
+            'message': 'Your application has been submitted successfully! Our team will review it and get back to you within 24-48 hours.',
+            'application_id': application_id,
+            'application_status': 'submitted'
         }
-        
+
         return func.HttpResponse(
             json.dumps(response_data),
             status_code=200,
@@ -759,7 +1463,7 @@ def handle_form_data_request(req):
         import traceback
         logging.error(traceback.format_exc())
         return func.HttpResponse(
-            json.dumps({"error": "An error occurred processing your documents. Please try again."}),
+            json.dumps({"error": f"Document processing error: {str(e)}"}),
             status_code=500,
             mimetype="application/json",
             headers={'Access-Control-Allow-Origin': '*'}
@@ -875,25 +1579,26 @@ def handle_credit_application(req_body):
         )
     
     try:
-        # Perform AI assessment
+        # Perform AI assessment (dual-AI pipeline)
         ai_assessment = perform_ai_assessment(req_body)
-        
+
         # Save to database
         db_result = save_application_to_db(req_body, ai_assessment)
-        
-        # Prepare response
+
+        # Save Claude credit report if available
+        application_id = db_result.get('application_id')
+        claude_report = ai_assessment.get('claude_report')
+        if claude_report and application_id:
+            save_credit_report(application_id, claude_report)
+
+        # Customer sees "submitted" — AI decision is internal only
         response_data = {
-            'decision': ai_assessment['decision'],
-            'credit_limit': ai_assessment['credit_limit'],
-            'tenor_months': ai_assessment['tenor_months'],
-            'interest_rate': ai_assessment['interest_rate'],
-            'confidence_score': ai_assessment['confidence_score'],
-            'risk_factors': ai_assessment['risk_factors'],
-            'recommendations': ai_assessment['recommendations'],
-            'application_id': db_result.get('application_id'),
-            'bank_analysis': ai_assessment.get('bank_analysis')
+            'status': 'submitted',
+            'message': 'Your application has been submitted successfully! Our team will review it and get back to you within 24-48 hours.',
+            'application_id': application_id,
+            'application_status': 'submitted'
         }
-        
+
         return func.HttpResponse(
             json.dumps(response_data),
             status_code=200,
@@ -907,7 +1612,7 @@ def handle_credit_application(req_body):
         logging.error(traceback.format_exc())
         
         return func.HttpResponse(
-            json.dumps({"error": "An error occurred processing your application. Please try again."}),
+            json.dumps({"error": f"Application processing error: {str(e)}"}),
             status_code=500,
             mimetype="application/json",
             headers={'Access-Control-Allow-Origin': '*'}
@@ -1022,7 +1727,12 @@ If you cannot determine the information, return:
             ai_response_clean = ai_response.split("```json")[1].split("```")[0].strip()
         elif "```" in ai_response:
             ai_response_clean = ai_response.split("```")[1].split("```")[0].strip()
-        
+
+        # Fix common AI JSON issues: commas in numbers (e.g. 388,281.67 -> 388281.67)
+        # Match number patterns with commas that are NOT string values
+        ai_response_clean = re.sub(r':\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?)',
+            lambda m: ': ' + m.group(1).replace(',', ''), ai_response_clean)
+
         # Parse JSON
         result = json.loads(ai_response_clean)
         
@@ -1204,6 +1914,314 @@ def parse_bank_transactions(text):
         'transaction_count': transaction_count
     }
 
+def ensure_new_tables(cursor):
+    """Create new tables for the enhanced platform if they don't exist"""
+    try:
+        cursor.execute("""
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='backoffice_users' AND xtype='U')
+            CREATE TABLE backoffice_users (
+                id INT IDENTITY PRIMARY KEY,
+                email NVARCHAR(255) UNIQUE NOT NULL,
+                password_hash NVARCHAR(256),
+                password_salt NVARCHAR(64),
+                fullname NVARCHAR(255),
+                role NVARCHAR(50) DEFAULT 'analyst',
+                is_active BIT DEFAULT 1,
+                created_at DATETIME DEFAULT GETDATE(),
+                last_login DATETIME
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='credit_reports' AND xtype='U')
+            CREATE TABLE credit_reports (
+                id INT IDENTITY PRIMARY KEY,
+                application_id INT,
+                ai_recommendation NVARCHAR(50),
+                confidence_score DECIMAL(5,2),
+                recommended_limit DECIMAL(18,2),
+                recommended_tenor INT,
+                revenue_analysis NVARCHAR(MAX),
+                bank_analysis NVARCHAR(MAX),
+                balance_sheet_analysis NVARCHAR(MAX),
+                iscore_analysis NVARCHAR(MAX),
+                identity_verification NVARCHAR(MAX),
+                risk_factors NVARCHAR(MAX),
+                positive_factors NVARCHAR(MAX),
+                executive_summary NVARCHAR(MAX),
+                full_report NVARCHAR(MAX),
+                created_at DATETIME DEFAULT GETDATE()
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='application_decisions' AND xtype='U')
+            CREATE TABLE application_decisions (
+                id INT IDENTITY PRIMARY KEY,
+                application_id INT,
+                decided_by INT,
+                decision NVARCHAR(50),
+                final_credit_limit DECIMAL(18,2),
+                final_tenor_months INT,
+                final_interest_rate DECIMAL(5,2),
+                override_reason NVARCHAR(MAX),
+                internal_notes NVARCHAR(MAX),
+                customer_notified BIT DEFAULT 0,
+                decided_at DATETIME DEFAULT GETDATE()
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='insurance_documents' AND xtype='U')
+            CREATE TABLE insurance_documents (
+                id INT IDENTITY PRIMARY KEY,
+                application_id INT,
+                document_type NVARCHAR(100),
+                filename NVARCHAR(255),
+                blob_url NVARCHAR(500),
+                uploaded_by INT,
+                notes NVARCHAR(MAX),
+                uploaded_at DATETIME DEFAULT GETDATE()
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='suppliers' AND xtype='U')
+            CREATE TABLE suppliers (
+                id INT IDENTITY PRIMARY KEY,
+                name NVARCHAR(255) NOT NULL,
+                category NVARCHAR(100),
+                location NVARCHAR(255),
+                invoice_range_min DECIMAL(18,2),
+                invoice_range_max DECIMAL(18,2),
+                payment_terms NVARCHAR(100),
+                status NVARCHAR(50) DEFAULT 'Active',
+                is_verified BIT DEFAULT 0,
+                created_at DATETIME DEFAULT GETDATE(),
+                updated_at DATETIME DEFAULT GETDATE()
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
+            CREATE TABLE audit_log (
+                id INT IDENTITY PRIMARY KEY,
+                user_id INT,
+                user_type NVARCHAR(20),
+                action NVARCHAR(100),
+                entity_type NVARCHAR(50),
+                entity_id INT,
+                details NVARCHAR(MAX),
+                ip_address NVARCHAR(50),
+                created_at DATETIME DEFAULT GETDATE()
+            );
+        """)
+        cursor.commit()
+
+        # Add new columns to applications table
+        cursor.execute("""
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'applications' AND COLUMN_NAME = 'application_status'
+            )
+            BEGIN
+                ALTER TABLE applications ADD application_status NVARCHAR(50) DEFAULT 'submitted';
+                ALTER TABLE applications ADD customer_notified BIT DEFAULT 0;
+                ALTER TABLE applications ADD notification_sent_at DATETIME;
+                ALTER TABLE applications ADD requested_amount DECIMAL(18,2);
+                ALTER TABLE applications ADD requested_installments INT;
+                ALTER TABLE applications ADD national_id_number NVARCHAR(50);
+                ALTER TABLE applications ADD years_in_business INT;
+                ALTER TABLE applications ADD business_description NVARCHAR(MAX);
+                ALTER TABLE applications ADD declared_monthly_inflows DECIMAL(18,2);
+            END
+        """)
+        cursor.commit()
+        logging.info("Database schema updated successfully")
+    except Exception as e:
+        logging.warning(f"Schema update check: {str(e)}")
+
+
+def analyze_with_claude(data, bank_analysis, openai_extraction=None):
+    """
+    Use Anthropic Claude to perform comprehensive credit risk analysis.
+
+    Claude receives all extracted data and generates a structured credit report
+    with recommendation, risk factors, and executive summary.
+    """
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key or not anthropic_sdk:
+        logging.warning("Anthropic Claude not configured — falling back to rule-based assessment")
+        return None
+
+    try:
+        client = anthropic_sdk.Anthropic(api_key=api_key)
+
+        # Build the data summary for Claude
+        revenue = data.get('revenue', 0)
+        if isinstance(revenue, str):
+            try:
+                revenue = float(revenue.replace(',', ''))
+            except:
+                revenue = 0
+
+        company = data.get('company', 'Unknown')
+        industry = data.get('industry', 'Not specified')
+        firstname = data.get('firstname', '')
+        lastname = data.get('lastname', '')
+        years_in_business = data.get('years_in_business', 'Not provided')
+        business_description = data.get('business_description', 'Not provided')
+        requested_amount = data.get('requested_amount', 'Not specified')
+        requested_installments = data.get('requested_installments', 'Not specified')
+
+        # Bank analysis summary
+        bank_summary = "No bank statements analyzed."
+        if bank_analysis:
+            bank_summary = f"""Bank Statement Analysis (via OpenAI extraction):
+- Total Inflows: {bank_analysis.get('total_inflows', 0):,.2f} EGP
+- Monthly Average: {bank_analysis.get('monthly_average', 0):,.2f} EGP
+- Annual Estimate: {bank_analysis.get('annual_estimate', 0):,.2f} EGP
+- Transactions Found: {bank_analysis.get('transactions_found', 0)}
+- Months Analyzed: {bank_analysis.get('months_analyzed', 0)}"""
+
+        prompt = f"""You are Finzeed's AI Credit Analyst. Analyze this SME credit application and produce a structured credit assessment report.
+
+## Applicant Information
+- Company: {company}
+- Applicant: {firstname} {lastname}
+- Industry: {industry}
+- Years in Business: {years_in_business}
+- Business Description: {business_description}
+- Declared Annual Revenue: {revenue:,.2f} EGP
+- Requested Credit Amount: {requested_amount}
+- Requested Installments: {requested_installments}
+
+## {bank_summary}
+
+## Finzeed Credit Parameters
+- Credit range: EGP 100,000 to 5,000,000
+- Interest rate: 3.5% per month (42% per annum)
+- Tenor options: 45 days, 3, 6, 9, 12 months
+- Revenue tiers: Tier 1 (10M+), Tier 2 (5M-10M), Tier 3 (3M-5M), Below threshold (<3M)
+- Maximum credit: 15% of verified annual revenue (capped at 5M)
+- Revenue discrepancy >30% triggers manual review
+
+## Your Task
+Analyze all available data and return ONLY a valid JSON object (no markdown, no code blocks) with this exact structure:
+
+{{
+  "recommendation": "APPROVE" or "REJECT" or "REVIEW",
+  "confidence_score": <number 0-100>,
+  "recommended_credit_limit": <number in EGP>,
+  "recommended_tenor_months": <number>,
+  "monthly_rate": 3.5,
+  "revenue_analysis": {{
+    "declared_annual": <number>,
+    "verified_annual": <number or null if no bank data>,
+    "discrepancy_percent": <number or null>,
+    "monthly_trend": "growing" or "stable" or "declining" or "unknown",
+    "revenue_verdict": "VERIFIED" or "UNVERIFIED" or "DISCREPANCY"
+  }},
+  "bank_analysis": {{
+    "total_inflows": <number>,
+    "total_outflows": <number or null>,
+    "avg_monthly_balance": <number or null>,
+    "transactions_analyzed": <number>,
+    "months_covered": <number>,
+    "bounce_count": <number or null>,
+    "seasonal_pattern": <string or null>
+  }},
+  "risk_factors": [<list of risk strings>],
+  "positive_factors": [<list of positive strings>],
+  "executive_summary": "<2-3 sentence summary for the credit team>"
+}}
+
+Be conservative with approvals. If data is insufficient, recommend REVIEW. Never recommend more than 15% of verified annual revenue or 5M EGP."""
+
+        logging.info("Calling Anthropic Claude for credit analysis...")
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        ai_response = message.content[0].text.strip()
+        logging.info(f"Claude response received ({len(ai_response)} chars)")
+
+        # Clean response
+        ai_response_clean = ai_response
+        if "```json" in ai_response:
+            ai_response_clean = ai_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in ai_response:
+            ai_response_clean = ai_response.split("```")[1].split("```")[0].strip()
+
+        # Fix comma-formatted numbers
+        ai_response_clean = re.sub(r':\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?)',
+            lambda m: ': ' + m.group(1).replace(',', ''), ai_response_clean)
+
+        report = json.loads(ai_response_clean)
+        logging.info(f"Claude recommendation: {report.get('recommendation')} (confidence: {report.get('confidence_score')})")
+        return report
+
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to parse Claude response as JSON: {str(e)}")
+        return None
+    except Exception as e:
+        logging.error(f"Claude analysis error: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return None
+
+
+def save_credit_report(application_id, claude_report):
+    """Save Claude's credit report to the credit_reports table"""
+    if not claude_report or not application_id:
+        return
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ensure_new_tables(cursor)
+
+        cursor.execute("""
+            INSERT INTO credit_reports (
+                application_id, ai_recommendation, confidence_score,
+                recommended_limit, recommended_tenor,
+                revenue_analysis, bank_analysis,
+                risk_factors, positive_factors, executive_summary, full_report
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            application_id,
+            claude_report.get('recommendation', 'REVIEW'),
+            claude_report.get('confidence_score', 0),
+            claude_report.get('recommended_credit_limit', 0),
+            claude_report.get('recommended_tenor_months', 6),
+            json.dumps(claude_report.get('revenue_analysis', {})),
+            json.dumps(claude_report.get('bank_analysis', {})),
+            json.dumps(claude_report.get('risk_factors', [])),
+            json.dumps(claude_report.get('positive_factors', [])),
+            claude_report.get('executive_summary', ''),
+            json.dumps(claude_report)
+        ))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        logging.info(f"Credit report saved for application {application_id}")
+    except Exception as e:
+        logging.error(f"Error saving credit report: {str(e)}")
+
+
+def log_audit(user_id, user_type, action, entity_type, entity_id, details=None, ip_address=None):
+    """Write an entry to the audit log"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO audit_log (user_id, user_type, action, entity_type, entity_id, details, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, user_type, action, entity_type, entity_id, details, ip_address))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        logging.warning(f"Audit log error: {str(e)}")
+
+
 def perform_ai_assessment(data):
     """Perform AI credit assessment with bank statement verification"""
     
@@ -1321,7 +2339,18 @@ def perform_ai_assessment(data):
         ]
     
     recommendations = [r for r in recommendations if r is not None]
-    
+
+    # ===== DUAL-AI: Send all data to Claude for comprehensive analysis =====
+    claude_report = analyze_with_claude(data, bank_analysis)
+
+    if claude_report:
+        # Claude successfully analyzed — use its recommendation for internal report
+        # but customer always sees "submitted" (decision hidden from customer)
+        logging.info(f"Claude AI recommendation: {claude_report.get('recommendation')} "
+                     f"(confidence: {claude_report.get('confidence_score')})")
+    else:
+        logging.info("Claude unavailable — using rule-based assessment only")
+
     return {
         'decision': decision,
         'credit_limit': credit_limit,
@@ -1330,5 +2359,6 @@ def perform_ai_assessment(data):
         'confidence_score': confidence,
         'risk_factors': risk_factors,
         'recommendations': recommendations,
-        'bank_analysis': bank_analysis
+        'bank_analysis': bank_analysis,
+        'claude_report': claude_report
     }
