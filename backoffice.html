@@ -498,6 +498,9 @@
       <a href="#" data-page="applications" onclick="navigateTo('applications')">
         <span class="nav-icon">&#128196;</span> Applications
       </a>
+      <a href="#" data-page="upload" onclick="navigateTo('upload')">
+        <span class="nav-icon">&#128228;</span> Upload Docs
+      </a>
       <a href="#" data-page="suppliers" onclick="navigateTo('suppliers')">
         <span class="nav-icon">&#127970;</span> Suppliers
       </a>
@@ -612,6 +615,144 @@
             <thead><tr><th>Name</th><th>Category</th><th>Location</th><th>Invoice Range</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="suppliersTableBody"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== UPLOAD DOCUMENTS PAGE ===== -->
+    <div class="page" id="page-upload">
+      <div class="page-header">
+        <div>
+          <h1>Upload Customer Documents</h1>
+          <div class="breadcrumb">Upload documents on behalf of a customer and run AI credit analysis</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <!-- LEFT: Customer Info + Documents -->
+        <div class="detail-section">
+          <h3>Customer Information</h3>
+          <form id="boUploadForm" onsubmit="handleBoUpload(event)">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">First Name *</label>
+                <input type="text" id="boFirstname" required style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Last Name *</label>
+                <input type="text" id="boLastname" required style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Email *</label>
+                <input type="email" id="boEmail" required style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Mobile *</label>
+                <input type="tel" id="boMobile" required style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+              </div>
+            </div>
+            <div style="margin-bottom:1rem;">
+              <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Company Name *</label>
+              <input type="text" id="boCompany" required style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Industry</label>
+                <select id="boIndustry" style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;">
+                  <option value="">Select</option>
+                  <option>Manufacturing</option><option>Trading</option><option>Distribution</option><option>Services</option><option>Construction</option><option>Food & Beverage</option><option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Annual Revenue (EGP) *</label>
+                <input type="number" id="boRevenue" required style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Years in Business</label>
+                <select id="boYears" style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;">
+                  <option value="">Select</option><option value="1">Less than 1</option><option value="2">1-2 years</option><option value="3">3-5 years</option><option value="7">5-10 years</option><option value="15">10+ years</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Monthly Inflows (EGP)</label>
+                <input type="number" id="boMonthlyInflows" style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;" />
+              </div>
+            </div>
+            <div style="margin-bottom:1rem;">
+              <label style="display:block;font-size:0.85rem;font-weight:500;margin-bottom:0.3rem;">Business Description</label>
+              <textarea id="boBusinessDesc" rows="2" style="width:100%;padding:0.5rem 0.8rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.875rem;resize:vertical;"></textarea>
+            </div>
+
+            <h3 style="margin-top:1.5rem;">Upload Documents</h3>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Upload the customer's documents. Bank statements will be analyzed by AI.</p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:1rem;text-align:center;cursor:pointer;" onclick="document.getElementById('boBankStatements').click()">
+                <div style="font-size:1.5rem;">&#127974;</div>
+                <div style="font-weight:600;font-size:0.85rem;">Bank Statements *</div>
+                <small style="color:var(--text-muted);">PDF, multiple files</small>
+                <input type="file" id="boBankStatements" accept=".pdf" multiple style="display:none;" onchange="showFileCount(this,'boBankCount')" />
+                <div id="boBankCount" style="font-size:0.8rem;color:var(--primary);margin-top:0.3rem;"></div>
+              </div>
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:1rem;text-align:center;cursor:pointer;" onclick="document.getElementById('boBalanceSheet').click()">
+                <div style="font-size:1.5rem;">&#128200;</div>
+                <div style="font-weight:600;font-size:0.85rem;">Balance Sheet</div>
+                <small style="color:var(--text-muted);">PDF or Image</small>
+                <input type="file" id="boBalanceSheet" accept=".pdf,image/*" style="display:none;" onchange="showFileCount(this,'boBalanceCount')" />
+                <div id="boBalanceCount" style="font-size:0.8rem;color:var(--primary);margin-top:0.3rem;"></div>
+              </div>
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:1rem;text-align:center;cursor:pointer;" onclick="document.getElementById('boNationalId').click()">
+                <div style="font-size:1.5rem;">&#128179;</div>
+                <div style="font-weight:600;font-size:0.85rem;">National ID *</div>
+                <small style="color:var(--text-muted);">PDF or Image</small>
+                <input type="file" id="boNationalId" accept=".pdf,image/*" style="display:none;" onchange="showFileCount(this,'boIdCount')" />
+                <div id="boIdCount" style="font-size:0.8rem;color:var(--primary);margin-top:0.3rem;"></div>
+              </div>
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:1rem;text-align:center;cursor:pointer;" onclick="document.getElementById('boIscore').click()">
+                <div style="font-size:1.5rem;">&#128202;</div>
+                <div style="font-weight:600;font-size:0.85rem;">i-Score Report</div>
+                <small style="color:var(--text-muted);">PDF or Image</small>
+                <input type="file" id="boIscore" accept=".pdf,image/*" style="display:none;" onchange="showFileCount(this,'boIscoreCount')" />
+                <div id="boIscoreCount" style="font-size:0.8rem;color:var(--primary);margin-top:0.3rem;"></div>
+              </div>
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:1rem;text-align:center;cursor:pointer;" onclick="document.getElementById('boCommReg').click()">
+                <div style="font-size:1.5rem;">&#128220;</div>
+                <div style="font-weight:600;font-size:0.85rem;">Commercial Registration</div>
+                <small style="color:var(--text-muted);">PDF or Image</small>
+                <input type="file" id="boCommReg" accept=".pdf,image/*" style="display:none;" onchange="showFileCount(this,'boCommRegCount')" />
+                <div id="boCommRegCount" style="font-size:0.8rem;color:var(--primary);margin-top:0.3rem;"></div>
+              </div>
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:1rem;text-align:center;cursor:pointer;" onclick="document.getElementById('boTaxCard').click()">
+                <div style="font-size:1.5rem;">&#128176;</div>
+                <div style="font-weight:600;font-size:0.85rem;">Tax Card</div>
+                <small style="color:var(--text-muted);">PDF or Image</small>
+                <input type="file" id="boTaxCard" accept=".pdf,image/*" style="display:none;" onchange="showFileCount(this,'boTaxCount')" />
+                <div id="boTaxCount" style="font-size:0.8rem;color:var(--primary);margin-top:0.3rem;"></div>
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem;display:flex;gap:0.8rem;">
+              <button type="submit" class="btn btn-primary" id="boUploadBtn" style="flex:1;justify-content:center;padding:0.75rem;">
+                Upload &amp; Run AI Analysis
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- RIGHT: AI Results -->
+        <div>
+          <div class="detail-section" id="boUploadResults">
+            <h3>AI Analysis Results</h3>
+            <div class="empty" style="padding:2rem;">
+              <div class="icon">&#128640;</div>
+              <p>Upload customer documents and click "Upload & Run AI Analysis" to see results here.</p>
+              <p style="font-size:0.85rem;color:var(--text-light);margin-top:0.5rem;">The AI will analyze bank statements, generate a credit report, and provide a recommendation.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1188,6 +1329,154 @@ async function saveSupplier() {
   } catch (ex) {
     alert('Error: ' + ex.message);
   }
+}
+
+// ===== BACKOFFICE UPLOAD =====
+
+function showFileCount(input, countId) {
+  var el = document.getElementById(countId);
+  if (input.files.length > 0) {
+    var names = [];
+    for (var i = 0; i < input.files.length; i++) names.push(input.files[i].name);
+    el.textContent = names.join(', ');
+    input.closest('div').style.borderColor = 'var(--primary)';
+  } else {
+    el.textContent = '';
+    input.closest('div').style.borderColor = 'var(--border)';
+  }
+}
+
+async function handleBoUpload(e) {
+  e.preventDefault();
+
+  var btn = document.getElementById('boUploadBtn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading & analyzing... (this may take 1-2 min)';
+
+  var resultsDiv = document.getElementById('boUploadResults');
+  resultsDiv.innerHTML = '<h3>AI Analysis Results</h3><div class="loading" style="padding:3rem;">Processing documents and running AI analysis...<br><small>This may take 1-2 minutes for bank statement extraction.</small></div>';
+
+  try {
+    var formData = new FormData();
+    formData.append('bo_upload', '1');
+    formData.append('firstname', document.getElementById('boFirstname').value);
+    formData.append('lastname', document.getElementById('boLastname').value);
+    formData.append('email', document.getElementById('boEmail').value);
+    formData.append('mobile', document.getElementById('boMobile').value);
+    formData.append('company', document.getElementById('boCompany').value);
+    formData.append('industry', document.getElementById('boIndustry').value);
+    formData.append('revenue', document.getElementById('boRevenue').value);
+    formData.append('years_in_business', document.getElementById('boYears').value);
+    formData.append('declared_monthly_inflows', document.getElementById('boMonthlyInflows').value || '0');
+    formData.append('business_description', document.getElementById('boBusinessDesc').value);
+
+    // Append files
+    var bankFiles = document.getElementById('boBankStatements').files;
+    for (var i = 0; i < bankFiles.length; i++) formData.append('bank_statements', bankFiles[i]);
+
+    var bsFiles = document.getElementById('boBalanceSheet').files;
+    for (var i = 0; i < bsFiles.length; i++) formData.append('balance_sheet', bsFiles[i]);
+
+    var idFiles = document.getElementById('boNationalId').files;
+    for (var i = 0; i < idFiles.length; i++) formData.append('national_id', idFiles[i]);
+
+    var isFiles = document.getElementById('boIscore').files;
+    for (var i = 0; i < isFiles.length; i++) formData.append('iscore', isFiles[i]);
+
+    var crFiles = document.getElementById('boCommReg').files;
+    for (var i = 0; i < crFiles.length; i++) formData.append('commercial_registration', crFiles[i]);
+
+    var tcFiles = document.getElementById('boTaxCard').files;
+    for (var i = 0; i < tcFiles.length; i++) formData.append('tax_card', tcFiles[i]);
+
+    var res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + boToken },
+      body: formData
+    });
+
+    var result = await res.json();
+
+    if (result.success) {
+      var html = '<h3>AI Analysis Results</h3>';
+
+      // Application ID
+      html += '<div style="background:var(--primary-light);padding:1rem;border-radius:8px;text-align:center;margin-bottom:1rem;">';
+      html += '<div style="font-size:1.5rem;">&#10003;</div>';
+      html += '<strong style="color:var(--primary);">Application #' + result.application_id + ' Created</strong>';
+      html += '</div>';
+
+      // Rule-based assessment
+      var ai = result.ai_assessment || {};
+      html += '<div style="margin-bottom:1rem;padding:1rem;background:#f9fafb;border-radius:8px;">';
+      html += '<strong>Rule-Based Assessment</strong>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.5rem;font-size:0.875rem;">';
+      html += '<div>Decision: <strong>' + esc(ai.decision || '-') + '</strong></div>';
+      html += '<div>Credit Limit: <strong>EGP ' + fmtMoney(ai.credit_limit) + '</strong></div>';
+      html += '<div>Tenor: <strong>' + (ai.tenor_months || '-') + ' months</strong></div>';
+      html += '<div>Confidence: <strong>' + (ai.confidence_score || '-') + '%</strong></div>';
+      html += '</div></div>';
+
+      // Claude Report
+      var cr = result.claude_report;
+      if (cr) {
+        var recClass = cr.recommendation === 'APPROVE' ? 'rec-approve' : cr.recommendation === 'REJECT' ? 'rec-reject' : 'rec-review';
+        html += '<div class="recommendation ' + recClass + '" style="text-align:center;padding:1.2rem;border-radius:8px;margin-bottom:1rem;">';
+        html += '<h2 style="margin-bottom:0.3rem;">Claude AI: ' + esc(cr.recommendation) + '</h2>';
+        html += '<div style="font-size:2rem;font-weight:800;">' + cr.confidence_score + '%</div>';
+        html += '<div>Confidence</div></div>';
+
+        html += '<div style="font-size:0.875rem;margin-bottom:0.8rem;">';
+        html += '<strong>Recommended:</strong> EGP ' + fmtMoney(cr.recommended_credit_limit) + ' for ' + cr.recommended_tenor_months + ' months';
+        html += '</div>';
+
+        if (cr.executive_summary) {
+          html += '<div class="executive-summary" style="margin-bottom:1rem;">' + esc(cr.executive_summary) + '</div>';
+        }
+
+        if (cr.risk_factors && cr.risk_factors.length) {
+          html += '<div style="margin-bottom:0.8rem;"><strong style="color:#b91c1c;">Risk Factors:</strong><ul style="margin:0.3rem 0 0 1.2rem;font-size:0.85rem;">';
+          cr.risk_factors.forEach(function(f) { html += '<li>' + esc(f) + '</li>'; });
+          html += '</ul></div>';
+        }
+
+        if (cr.positive_factors && cr.positive_factors.length) {
+          html += '<div style="margin-bottom:0.8rem;"><strong style="color:var(--primary);">Positive Factors:</strong><ul style="margin:0.3rem 0 0 1.2rem;font-size:0.85rem;">';
+          cr.positive_factors.forEach(function(f) { html += '<li>' + esc(f) + '</li>'; });
+          html += '</ul></div>';
+        }
+      } else {
+        html += '<div style="background:#fffbeb;padding:1rem;border-radius:8px;font-size:0.875rem;">Claude AI report not available. Check if ANTHROPIC_API_KEY is configured.</div>';
+      }
+
+      // Bank analysis
+      if (ai.bank_analysis) {
+        var ba = ai.bank_analysis;
+        html += '<div style="margin-top:1rem;padding:1rem;background:var(--primary-light);border-radius:8px;font-size:0.875rem;">';
+        html += '<strong>Bank Statement Analysis:</strong><br>';
+        html += 'Total Inflows: EGP ' + fmtMoney(ba.total_inflows) + '<br>';
+        html += 'Monthly Average: EGP ' + fmtMoney(ba.monthly_average) + '<br>';
+        html += 'Annual Estimate: EGP ' + fmtMoney(ba.annual_estimate) + '<br>';
+        html += 'Transactions: ' + ba.transactions_found + ' over ' + ba.months_analyzed + ' months';
+        html += '</div>';
+      }
+
+      html += '<div style="margin-top:1rem;text-align:center;">';
+      html += '<button class="btn btn-primary" onclick="viewApplication(' + result.application_id + ')">View Full Application</button>';
+      html += '</div>';
+
+      resultsDiv.innerHTML = html;
+
+    } else {
+      resultsDiv.innerHTML = '<h3>AI Analysis Results</h3><div style="color:#dc2626;padding:1rem;">Error: ' + esc(result.error || 'Unknown error') + '</div>';
+    }
+
+  } catch (ex) {
+    resultsDiv.innerHTML = '<h3>AI Analysis Results</h3><div style="color:#dc2626;padding:1rem;">Error: ' + esc(ex.message) + '</div>';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Upload & Run AI Analysis';
 }
 
 // ===== START =====

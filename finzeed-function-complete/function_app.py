@@ -650,7 +650,54 @@ def handle_backoffice_login(req_body):
 
     except Exception as e:
         logging.error(f"Backoffice login error: {str(e)}")
-        return make_response({"error": "Login failed"}, 500)
+        import traceback
+        logging.error(traceback.format_exc())
+        return make_response({"error": f"Login failed: {str(e)}"}, 500)
+
+
+def handle_seed_admin(req_body):
+    """One-time endpoint to create the first backoffice admin user.
+    Protected by a setup_key that must match ANTHROPIC_API_KEY (or a dedicated SETUP_KEY)."""
+    setup_key = req_body.get('setup_key', '')
+    expected_key = os.environ.get('SETUP_KEY') or os.environ.get('ANTHROPIC_API_KEY', '')
+
+    if not setup_key or setup_key != expected_key:
+        return make_response({"error": "Invalid setup key"}, 403)
+
+    email = req_body.get('email', '').strip().lower()
+    password = req_body.get('password', '')
+    fullname = req_body.get('fullname', '').strip()
+
+    if not email or not password or len(password) < 8:
+        return make_response({"error": "Email and password (8+ chars) required"}, 400)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ensure_new_tables(cursor)
+
+        # Check if admin already exists
+        cursor.execute("SELECT id FROM backoffice_users WHERE email = ?", (email,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return make_response({"error": "Admin user already exists"}, 409)
+
+        pw_hash, pw_salt = hash_password(password)
+        cursor.execute("""
+            INSERT INTO backoffice_users (email, password_hash, password_salt, fullname, role, is_active)
+            VALUES (?, ?, ?, ?, 'admin', 1)
+        """, (email, pw_hash, pw_salt, fullname or 'Admin'))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        logging.info(f"Backoffice admin created: {email}")
+        return make_response({"success": True, "message": f"Admin user {email} created successfully"}, 201)
+
+    except Exception as e:
+        logging.error(f"Seed admin error: {str(e)}")
+        return make_response({"error": "Failed to create admin"}, 500)
 
 
 def handle_backoffice_dashboard(req, req_body):
@@ -1148,6 +1195,138 @@ def handle_contact_us(req_body):
     })
 
 
+# ========== BACKOFFICE UPLOAD HANDLER ==========
+
+def handle_backoffice_upload(req):
+    """Handle document upload by backoffice employees on behalf of a customer.
+    Accepts files + customer info, runs AI analysis, saves to DB."""
+    # Verify backoffice JWT
+    payload = verify_backoffice_token(req)
+    if not payload:
+        return func.HttpResponse(
+            json.dumps({"error": "Unauthorized"}), status_code=401,
+            mimetype="application/json", headers={'Access-Control-Allow-Origin': '*'})
+
+    try:
+        # Extract form fields
+        company = req.form.get('company', '')
+        firstname = req.form.get('firstname', '')
+        lastname = req.form.get('lastname', '')
+        email = req.form.get('email', '')
+        mobile = req.form.get('mobile', '')
+        revenue = req.form.get('revenue', '0')
+        industry = req.form.get('industry', '')
+        purpose = req.form.get('purpose', '')
+        years_in_business = req.form.get('years_in_business', '')
+        business_description = req.form.get('business_description', '')
+        requested_amount = req.form.get('requested_amount', '')
+        requested_installments = req.form.get('requested_installments', '')
+        declared_monthly_inflows = req.form.get('declared_monthly_inflows', '0')
+        application_id = req.form.get('application_id', '')  # optional: attach to existing app
+
+        try:
+            revenue = float(revenue.replace(',', '')) if revenue else 0
+        except:
+            revenue = 0
+
+        logging.info(f"Backoffice upload by {payload['email']} for customer {email or company}")
+
+        # Get all uploaded files
+        bank_statements = req.files.getlist('bank_statements') or req.files.getlist('bankStatements') or []
+        national_id_files = req.files.getlist('national_id') or req.files.getlist('nationalId') or []
+        iscore_files = req.files.getlist('iscore') or req.files.getlist('iScore') or []
+        balance_sheet_files = req.files.getlist('balance_sheet') or req.files.getlist('balanceSheet') or []
+        commercial_reg_files = req.files.getlist('commercial_registration') or req.files.getlist('commercialRegistration') or []
+        tax_card_files = req.files.getlist('tax_card') or req.files.getlist('taxCard') or []
+
+        logging.info(f"Backoffice files: {len(bank_statements)} bank, {len(national_id_files)} ID, "
+                     f"{len(iscore_files)} iScore, {len(balance_sheet_files)} balance sheet")
+
+        # Build data structure
+        data = {
+            'company': company, 'firstname': firstname, 'lastname': lastname,
+            'email': email, 'mobile': mobile, 'revenue': revenue,
+            'industry': industry, 'purpose': purpose,
+            'years_in_business': years_in_business,
+            'business_description': business_description,
+            'requested_amount': requested_amount,
+            'requested_installments': requested_installments,
+            'declared_monthly_inflows': declared_monthly_inflows,
+            'documents': {
+                'bank_statements': [], 'national_id': [], 'iscore': [],
+                'balance_sheet': [], 'commercial_registration': [], 'tax_card': []
+            }
+        }
+
+        # Process bank statements
+        for bs in bank_statements:
+            file_content = bs.read()
+            data['documents']['bank_statements'].append({
+                'filename': bs.filename,
+                'content': base64.b64encode(file_content).decode('utf-8'),
+                'size': len(file_content)
+            })
+
+        # Process other document types
+        for doc_type, file_list in [
+            ('national_id', national_id_files), ('iscore', iscore_files),
+            ('balance_sheet', balance_sheet_files),
+            ('commercial_registration', commercial_reg_files),
+            ('tax_card', tax_card_files)
+        ]:
+            for doc_file in file_list:
+                file_content = doc_file.read()
+                data['documents'][doc_type].append({
+                    'filename': doc_file.filename,
+                    'content': base64.b64encode(file_content).decode('utf-8'),
+                    'size': len(file_content)
+                })
+
+        # Run AI assessment (OpenAI extraction + Claude analysis)
+        ai_assessment = perform_ai_assessment(data)
+
+        # Save to DB
+        db_result = save_application_to_db(data, ai_assessment)
+        app_id = db_result.get('application_id') or application_id
+
+        # Save Claude report
+        claude_report = ai_assessment.get('claude_report')
+        if claude_report and app_id:
+            save_credit_report(app_id, claude_report)
+
+        # Audit log
+        log_audit(payload['user_id'], 'backoffice', 'upload_documents', 'application', app_id,
+                  json.dumps({"uploaded_by": payload['email'], "company": company}))
+
+        # Return full results to backoffice (they see everything)
+        response_data = {
+            'success': True,
+            'application_id': app_id,
+            'ai_assessment': {
+                'decision': ai_assessment.get('decision'),
+                'credit_limit': ai_assessment.get('credit_limit'),
+                'tenor_months': ai_assessment.get('tenor_months'),
+                'confidence_score': ai_assessment.get('confidence_score'),
+                'risk_factors': ai_assessment.get('risk_factors'),
+                'bank_analysis': ai_assessment.get('bank_analysis')
+            },
+            'claude_report': claude_report,
+            'message': f'Application created and AI analysis complete for {company or email}'
+        }
+
+        return func.HttpResponse(
+            json.dumps(response_data, default=str), status_code=200,
+            mimetype="application/json", headers={'Access-Control-Allow-Origin': '*'})
+
+    except Exception as e:
+        logging.error(f"Backoffice upload error: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return func.HttpResponse(
+            json.dumps({"error": f"Upload processing error: {str(e)}"}), status_code=500,
+            mimetype="application/json", headers={'Access-Control-Allow-Origin': '*'})
+
+
 # ========== EXISTING HANDLERS ==========
 
 def save_application_to_db(data, ai_assessment):
@@ -1269,6 +1448,9 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
         content_type = req.headers.get('Content-Type', '')
         
         if 'multipart/form-data' in content_type:
+            # Check if this is a backoffice upload (has bo_upload field)
+            if req.form.get('bo_upload') == '1':
+                return handle_backoffice_upload(req)
             # This is a file upload request - handle differently
             return handle_form_data_request(req)
         else:
@@ -1301,6 +1483,8 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
             # Backoffice actions
             if action == 'backoffice_login':
                 return handle_backoffice_login(req_body)
+            if action == 'seed_admin':
+                return handle_seed_admin(req_body)
             if action == 'backoffice_applications':
                 return handle_backoffice_applications(req, req_body)
             if action == 'backoffice_application_detail':
@@ -1915,121 +2099,142 @@ def parse_bank_transactions(text):
     }
 
 def ensure_new_tables(cursor):
-    """Create new tables for the enhanced platform if they don't exist"""
-    try:
-        cursor.execute("""
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='backoffice_users' AND xtype='U')
-            CREATE TABLE backoffice_users (
-                id INT IDENTITY PRIMARY KEY,
-                email NVARCHAR(255) UNIQUE NOT NULL,
-                password_hash NVARCHAR(256),
-                password_salt NVARCHAR(64),
-                fullname NVARCHAR(255),
-                role NVARCHAR(50) DEFAULT 'analyst',
-                is_active BIT DEFAULT 1,
-                created_at DATETIME DEFAULT GETDATE(),
-                last_login DATETIME
-            );
+    """Create new tables for the enhanced platform if they don't exist.
+    Each statement is executed separately to avoid pyodbc multi-statement issues."""
+    conn = cursor.connection
 
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='credit_reports' AND xtype='U')
-            CREATE TABLE credit_reports (
-                id INT IDENTITY PRIMARY KEY,
-                application_id INT,
-                ai_recommendation NVARCHAR(50),
-                confidence_score DECIMAL(5,2),
-                recommended_limit DECIMAL(18,2),
-                recommended_tenor INT,
-                revenue_analysis NVARCHAR(MAX),
-                bank_analysis NVARCHAR(MAX),
-                balance_sheet_analysis NVARCHAR(MAX),
-                iscore_analysis NVARCHAR(MAX),
-                identity_verification NVARCHAR(MAX),
-                risk_factors NVARCHAR(MAX),
-                positive_factors NVARCHAR(MAX),
-                executive_summary NVARCHAR(MAX),
-                full_report NVARCHAR(MAX),
-                created_at DATETIME DEFAULT GETDATE()
-            );
+    table_stmts = [
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='backoffice_users' AND xtype='U')
+        CREATE TABLE backoffice_users (
+            id INT IDENTITY PRIMARY KEY,
+            email NVARCHAR(255) UNIQUE NOT NULL,
+            password_hash NVARCHAR(256),
+            password_salt NVARCHAR(64),
+            fullname NVARCHAR(255),
+            role NVARCHAR(50) DEFAULT 'analyst',
+            is_active BIT DEFAULT 1,
+            created_at DATETIME DEFAULT GETDATE(),
+            last_login DATETIME
+        )""",
 
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='application_decisions' AND xtype='U')
-            CREATE TABLE application_decisions (
-                id INT IDENTITY PRIMARY KEY,
-                application_id INT,
-                decided_by INT,
-                decision NVARCHAR(50),
-                final_credit_limit DECIMAL(18,2),
-                final_tenor_months INT,
-                final_interest_rate DECIMAL(5,2),
-                override_reason NVARCHAR(MAX),
-                internal_notes NVARCHAR(MAX),
-                customer_notified BIT DEFAULT 0,
-                decided_at DATETIME DEFAULT GETDATE()
-            );
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='credit_reports' AND xtype='U')
+        CREATE TABLE credit_reports (
+            id INT IDENTITY PRIMARY KEY,
+            application_id INT,
+            ai_recommendation NVARCHAR(50),
+            confidence_score DECIMAL(5,2),
+            recommended_limit DECIMAL(18,2),
+            recommended_tenor INT,
+            revenue_analysis NVARCHAR(MAX),
+            bank_analysis NVARCHAR(MAX),
+            balance_sheet_analysis NVARCHAR(MAX),
+            iscore_analysis NVARCHAR(MAX),
+            identity_verification NVARCHAR(MAX),
+            risk_factors NVARCHAR(MAX),
+            positive_factors NVARCHAR(MAX),
+            executive_summary NVARCHAR(MAX),
+            full_report NVARCHAR(MAX),
+            created_at DATETIME DEFAULT GETDATE()
+        )""",
 
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='insurance_documents' AND xtype='U')
-            CREATE TABLE insurance_documents (
-                id INT IDENTITY PRIMARY KEY,
-                application_id INT,
-                document_type NVARCHAR(100),
-                filename NVARCHAR(255),
-                blob_url NVARCHAR(500),
-                uploaded_by INT,
-                notes NVARCHAR(MAX),
-                uploaded_at DATETIME DEFAULT GETDATE()
-            );
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='application_decisions' AND xtype='U')
+        CREATE TABLE application_decisions (
+            id INT IDENTITY PRIMARY KEY,
+            application_id INT,
+            decided_by INT,
+            decision NVARCHAR(50),
+            final_credit_limit DECIMAL(18,2),
+            final_tenor_months INT,
+            final_interest_rate DECIMAL(5,2),
+            override_reason NVARCHAR(MAX),
+            internal_notes NVARCHAR(MAX),
+            customer_notified BIT DEFAULT 0,
+            decided_at DATETIME DEFAULT GETDATE()
+        )""",
 
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='suppliers' AND xtype='U')
-            CREATE TABLE suppliers (
-                id INT IDENTITY PRIMARY KEY,
-                name NVARCHAR(255) NOT NULL,
-                category NVARCHAR(100),
-                location NVARCHAR(255),
-                invoice_range_min DECIMAL(18,2),
-                invoice_range_max DECIMAL(18,2),
-                payment_terms NVARCHAR(100),
-                status NVARCHAR(50) DEFAULT 'Active',
-                is_verified BIT DEFAULT 0,
-                created_at DATETIME DEFAULT GETDATE(),
-                updated_at DATETIME DEFAULT GETDATE()
-            );
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='insurance_documents' AND xtype='U')
+        CREATE TABLE insurance_documents (
+            id INT IDENTITY PRIMARY KEY,
+            application_id INT,
+            document_type NVARCHAR(100),
+            filename NVARCHAR(255),
+            blob_url NVARCHAR(500),
+            uploaded_by INT,
+            notes NVARCHAR(MAX),
+            uploaded_at DATETIME DEFAULT GETDATE()
+        )""",
 
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
-            CREATE TABLE audit_log (
-                id INT IDENTITY PRIMARY KEY,
-                user_id INT,
-                user_type NVARCHAR(20),
-                action NVARCHAR(100),
-                entity_type NVARCHAR(50),
-                entity_id INT,
-                details NVARCHAR(MAX),
-                ip_address NVARCHAR(50),
-                created_at DATETIME DEFAULT GETDATE()
-            );
-        """)
-        cursor.commit()
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='suppliers' AND xtype='U')
+        CREATE TABLE suppliers (
+            id INT IDENTITY PRIMARY KEY,
+            name NVARCHAR(255) NOT NULL,
+            category NVARCHAR(100),
+            location NVARCHAR(255),
+            invoice_range_min DECIMAL(18,2),
+            invoice_range_max DECIMAL(18,2),
+            payment_terms NVARCHAR(100),
+            status NVARCHAR(50) DEFAULT 'Active',
+            is_verified BIT DEFAULT 0,
+            created_at DATETIME DEFAULT GETDATE(),
+            updated_at DATETIME DEFAULT GETDATE()
+        )""",
 
-        # Add new columns to applications table
-        cursor.execute("""
-            IF NOT EXISTS (
-                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_NAME = 'applications' AND COLUMN_NAME = 'application_status'
-            )
-            BEGIN
-                ALTER TABLE applications ADD application_status NVARCHAR(50) DEFAULT 'submitted';
-                ALTER TABLE applications ADD customer_notified BIT DEFAULT 0;
-                ALTER TABLE applications ADD notification_sent_at DATETIME;
-                ALTER TABLE applications ADD requested_amount DECIMAL(18,2);
-                ALTER TABLE applications ADD requested_installments INT;
-                ALTER TABLE applications ADD national_id_number NVARCHAR(50);
-                ALTER TABLE applications ADD years_in_business INT;
-                ALTER TABLE applications ADD business_description NVARCHAR(MAX);
-                ALTER TABLE applications ADD declared_monthly_inflows DECIMAL(18,2);
-            END
-        """)
-        cursor.commit()
-        logging.info("Database schema updated successfully")
-    except Exception as e:
-        logging.warning(f"Schema update check: {str(e)}")
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
+        CREATE TABLE audit_log (
+            id INT IDENTITY PRIMARY KEY,
+            user_id INT,
+            user_type NVARCHAR(20),
+            action NVARCHAR(100),
+            entity_type NVARCHAR(50),
+            entity_id INT,
+            details NVARCHAR(MAX),
+            ip_address NVARCHAR(50),
+            created_at DATETIME DEFAULT GETDATE()
+        )""",
+
+        """IF NOT EXISTS (
+            SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'applications' AND COLUMN_NAME = 'application_status'
+        )
+        ALTER TABLE applications ADD application_status NVARCHAR(50) DEFAULT 'submitted'""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='customer_notified')
+        ALTER TABLE applications ADD customer_notified BIT DEFAULT 0""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='notification_sent_at')
+        ALTER TABLE applications ADD notification_sent_at DATETIME""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='requested_amount')
+        ALTER TABLE applications ADD requested_amount DECIMAL(18,2)""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='requested_installments')
+        ALTER TABLE applications ADD requested_installments INT""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='national_id_number')
+        ALTER TABLE applications ADD national_id_number NVARCHAR(50)""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='years_in_business')
+        ALTER TABLE applications ADD years_in_business INT""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='business_description')
+        ALTER TABLE applications ADD business_description NVARCHAR(MAX)""",
+
+        """IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='applications' AND COLUMN_NAME='declared_monthly_inflows')
+        ALTER TABLE applications ADD declared_monthly_inflows DECIMAL(18,2)""",
+    ]
+
+    for stmt in table_stmts:
+        try:
+            cursor.execute(stmt)
+            conn.commit()
+        except Exception as e:
+            logging.warning(f"Schema stmt skipped: {str(e)[:100]}")
+            try:
+                conn.rollback()
+            except:
+                pass
+
+    logging.info("Database schema check completed")
 
 
 def analyze_with_claude(data, bank_analysis, openai_extraction=None):
