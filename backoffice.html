@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finzeed Backoffice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #0a7c1a;
+      --primary-dark: #065c10;
+      --primary-light: #e6f5e8;
+      --accent: #0ea5e9;
+      --bg: #f3f4f6;
+      --bg-white: #ffffff;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --text-light: #9ca3af;
+      --border: #e5e7eb;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --radius: 12px;
+      --transition: all 0.2s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; }
+    a { color: var(--primary); text-decoration: none; }
+
+    /* ===== LOGIN ===== */
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0f9ff 100%);
+    }
+    .login-card {
+      background: white;
+      padding: 2.5rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-card .logo {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .login-card .logo-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--primary), #10b530);
+      color: white;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 1rem;
+    }
+    .login-card h2 { text-align: center; margin: 0.5rem 0 0.3rem; color: var(--primary); }
+    .login-card .subtitle { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .login-card label { display: block; font-weight: 500; font-size: 0.85rem; margin-bottom: 0.3rem; color: var(--text-main); }
+    .login-card input {
+      width: 100%;
+      padding: 0.65rem 0.8rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      transition: var(--transition);
+    }
+    .login-card input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(10,124,26,0.1); }
+    .login-error { color: #dc2626; font-size: 0.85rem; margin-bottom: 0.8rem; display: none; }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.2rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-full { width: 100%; justify-content: center; padding: 0.75rem; font-size: 1rem; }
+    .btn-outline { background: white; border: 1.5px solid var(--border); color: var(--text-main); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success { background: var(--primary); color: white; }
+    .btn-warning { background: #f59e0b; color: white; }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+
+    /* ===== LAYOUT ===== */
+    .app { display: none; }
+    .app.active { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: #1a1a2e;
+      color: white;
+      padding: 1.5rem 0;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0 1.2rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 1rem;
+    }
+    .sidebar-logo .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), #10b530);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+    .sidebar-logo span { font-weight: 700; font-size: 1.1rem; }
+    .sidebar-logo small { display: block; font-size: 0.7rem; color: rgba(255,255,255,0.5); font-weight: 400; }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.65rem 1.2rem;
+      color: rgba(255,255,255,0.65);
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: var(--transition);
+      border-left: 3px solid transparent;
+    }
+    .sidebar-nav a:hover { color: white; background: rgba(255,255,255,0.05); }
+    .sidebar-nav a.active {
+      color: white;
+      background: rgba(10,124,26,0.2);
+      border-left-color: var(--primary);
+    }
+    .sidebar-nav a .nav-icon { font-size: 1.1rem; width: 24px; text-align: center; }
+
+    .sidebar-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0; right: 0;
+      padding: 1rem 1.2rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .sidebar-footer .user-info { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem; }
+    .sidebar-footer .user-name { color: white; font-weight: 600; font-size: 0.9rem; }
+    .sidebar-footer button {
+      background: none; border: none; color: rgba(255,255,255,0.5);
+      font-size: 0.8rem; cursor: pointer; padding: 0;
+    }
+    .sidebar-footer button:hover { color: white; }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      padding: 1.5rem 2rem;
+    }
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .page-header h1 { font-size: 1.5rem; }
+    .page-header .breadcrumb { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ===== PAGES ===== */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ===== STATS CARDS ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: white;
+      padding: 1.2rem 1.5rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-card .stat-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+    .stat-card .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--text-main); margin: 0.3rem 0; }
+    .stat-card .stat-change { font-size: 0.8rem; color: var(--primary); font-weight: 500; }
+
+    /* ===== TABLE ===== */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-header h3 { font-size: 1rem; }
+    .card-body { padding: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    tr:hover { background: #f9fafb; }
+    tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-green { background: var(--primary-light); color: var(--primary); }
+    .badge-yellow { background: #fffbeb; color: #92400e; }
+    .badge-red { background: #fef2f2; color: #b91c1c; }
+    .badge-blue { background: #eff6ff; color: #1d4ed8; }
+    .badge-gray { background: #f3f4f6; color: #6b7280; }
+
+    .clickable { cursor: pointer; }
+    .clickable:hover { background: #f0fdf4 !important; }
+
+    /* ===== FILTERS ===== */
+    .filters {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .filters input, .filters select {
+      padding: 0.5rem 0.8rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+      background: white;
+    }
+    .filters input:focus, .filters select:focus { outline: none; border-color: var(--primary); }
+    .filters input { min-width: 220px; }
+
+    /* ===== DETAIL VIEW ===== */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .detail-section {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 1.5rem;
+    }
+    .detail-section h3 {
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      font-size: 0.875rem;
+    }
+    .detail-row .label { color: var(--text-muted); }
+    .detail-row .value { font-weight: 500; text-align: right; }
+
+    .ai-report {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .ai-report h3 {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ai-report .recommendation {
+      text-align: center;
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+    }
+    .ai-report .recommendation h2 { font-size: 1.3rem; margin-bottom: 0.3rem; }
+    .ai-report .recommendation .score { font-size: 2rem; font-weight: 800; }
+    .rec-approve { background: var(--primary-light); color: var(--primary); }
+    .rec-reject { background: #fef2f2; color: #b91c1c; }
+    .rec-review { background: #fffbeb; color: #92400e; }
+
+    .factor-list { list-style: none; padding: 0; }
+    .factor-list li {
+      padding: 0.4rem 0;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .factor-list li .icon { flex-shrink: 0; }
+
+    .decision-panel {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .decision-panel h3 { margin-bottom: 1rem; }
+    .decision-panel .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .decision-panel label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem; }
+    .decision-panel input, .decision-panel textarea, .decision-panel select {
+      width: 100%;
+      padding: 0.55rem 0.8rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+    .decision-panel textarea { resize: vertical; min-height: 80px; }
+    .decision-buttons { display: flex; gap: 0.8rem; margin-top: 1rem; }
+
+    .full-width { grid-column: 1 / -1; }
+    .executive-summary {
+      background: #f8fafc;
+      border-left: 4px solid var(--primary);
+      padding: 1rem 1.2rem;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--text-main);
+    }
+
+    /* ===== SUPPLIER TABLE ===== */
+    .supplier-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      padding: 1.5rem;
+    }
+    .supplier-form label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem; }
+    .supplier-form input, .supplier-form select {
+      width: 100%;
+      padding: 0.5rem 0.8rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+      width: 90%;
+      max-width: 560px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 { font-size: 1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .pagination .page-btns { display: flex; gap: 0.3rem; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 3rem; color: var(--text-muted); }
+    .empty .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 2rem; color: var(--text-muted); }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 1rem; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .decision-panel .form-row { grid-template-columns: 1fr; }
+      .supplier-form { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div class="login-page" id="loginPage">
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-icon">FZ</div>
+      <h2>Finzeed</h2>
+      <p class="subtitle">Backoffice Portal</p>
+    </div>
+    <form onsubmit="handleBackofficeLogin(event)">
+      <label>Email address</label>
+      <input type="email" id="loginEmail" placeholder="admin@finzeed.com" required />
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="Enter password" required />
+      <div class="login-error" id="loginError"></div>
+      <button type="submit" class="btn btn-primary btn-full" id="loginBtn">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div class="app" id="appShell">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">FZ</div>
+      <div>
+        <span>Finzeed</span>
+        <small>Backoffice</small>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <a href="#" class="active" data-page="dashboard" onclick="navigateTo('dashboard')">
+        <span class="nav-icon">&#9632;</span> Dashboard
+      </a>
+      <a href="#" data-page="applications" onclick="navigateTo('applications')">
+        <span class="nav-icon">&#128196;</span> Applications
+      </a>
+      <a href="#" data-page="suppliers" onclick="navigateTo('suppliers')">
+        <span class="nav-icon">&#127970;</span> Suppliers
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-name" id="sidebarUserName">Admin</div>
+        <div id="sidebarUserRole">analyst</div>
+      </div>
+      <button onclick="logout()">Sign out</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+
+    <!-- ===== DASHBOARD PAGE ===== -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="breadcrumb">Overview of platform activity</div>
+        </div>
+        <button class="btn btn-outline" onclick="loadDashboard()">Refresh</button>
+      </div>
+
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-label">Total Applications</div><div class="stat-value" id="statTotal">-</div></div>
+        <div class="stat-card"><div class="stat-label">Today</div><div class="stat-value" id="statToday">-</div></div>
+        <div class="stat-card"><div class="stat-label">This Week</div><div class="stat-value" id="statWeek">-</div></div>
+        <div class="stat-card"><div class="stat-label">Credit Approved</div><div class="stat-value" id="statCredit">-</div><div class="stat-change">EGP</div></div>
+      </div>
+
+      <div class="stats-grid" id="statusCards"></div>
+
+      <div class="card">
+        <div class="card-header"><h3>Recent Applications</h3></div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>ID</th><th>Company</th><th>Email</th><th>Revenue</th><th>Status</th><th>AI Rec.</th><th>Date</th></tr></thead>
+            <tbody id="recentTableBody"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== APPLICATIONS PAGE ===== -->
+    <div class="page" id="page-applications">
+      <div class="page-header">
+        <div>
+          <h1>Applications</h1>
+          <div class="breadcrumb">Manage credit applications</div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <input type="text" id="appSearch" placeholder="Search company or email..." oninput="debounceLoadApps()" />
+        <select id="appStatusFilter" onchange="loadApplications()">
+          <option value="">All statuses</option>
+          <option value="submitted">Submitted</option>
+          <option value="ai_reviewed">AI Reviewed</option>
+          <option value="pending_review">Pending Review</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="info_requested">Info Requested</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <table>
+            <thead><tr><th>ID</th><th>Company</th><th>Applicant</th><th>Revenue</th><th>Status</th><th>AI Rec.</th><th>Confidence</th><th>Date</th></tr></thead>
+            <tbody id="appsTableBody"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <div id="appsPagInfo">-</div>
+          <div class="page-btns">
+            <button class="btn btn-sm btn-outline" onclick="appsPage(-1)">Prev</button>
+            <button class="btn btn-sm btn-outline" onclick="appsPage(1)">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== APPLICATION DETAIL PAGE ===== -->
+    <div class="page" id="page-detail">
+      <div class="page-header">
+        <div>
+          <h1 id="detailTitle">Application Detail</h1>
+          <div class="breadcrumb"><a href="#" onclick="navigateTo('applications')">Applications</a> / <span id="detailBreadcrumb">-</span></div>
+        </div>
+        <button class="btn btn-outline" onclick="navigateTo('applications')">Back to list</button>
+      </div>
+
+      <div id="detailContent"><div class="loading">Loading application...</div></div>
+    </div>
+
+    <!-- ===== SUPPLIERS PAGE ===== -->
+    <div class="page" id="page-suppliers">
+      <div class="page-header">
+        <div>
+          <h1>Suppliers</h1>
+          <div class="breadcrumb">Manage supplier marketplace</div>
+        </div>
+        <button class="btn btn-primary" onclick="openSupplierModal()">+ Add Supplier</button>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Name</th><th>Category</th><th>Location</th><th>Invoice Range</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="suppliersTableBody"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== SUPPLIER MODAL ===== -->
+<div class="modal-overlay" id="supplierModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="supplierModalTitle">Add Supplier</h3>
+      <button class="modal-close" onclick="closeSupplierModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="supplier-form" id="supplierForm">
+        <input type="hidden" id="supplierId" />
+        <div>
+          <label>Supplier Name *</label>
+          <input type="text" id="supplierName" required />
+        </div>
+        <div>
+          <label>Category</label>
+          <select id="supplierCategory">
+            <option value="">Select</option>
+            <option>Electronics</option>
+            <option>Raw Materials</option>
+            <option>Packaging</option>
+            <option>Food & Beverage</option>
+            <option>Construction</option>
+            <option>Textiles</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label>Location</label>
+          <input type="text" id="supplierLocation" placeholder="e.g. Cairo, Egypt" />
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="supplierStatus">
+            <option value="Active">Active</option>
+            <option value="Pilot">Pilot</option>
+            <option value="Preferred">Preferred</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        <div>
+          <label>Min Invoice (EGP)</label>
+          <input type="number" id="supplierMinInvoice" placeholder="e.g. 50000" />
+        </div>
+        <div>
+          <label>Max Invoice (EGP)</label>
+          <input type="number" id="supplierMaxInvoice" placeholder="e.g. 500000" />
+        </div>
+        <div class="full-width">
+          <label>Payment Terms</label>
+          <input type="text" id="supplierPaymentTerms" placeholder="e.g. Net 30 days" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSupplierModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSupplier()" id="supplierSaveBtn">Save Supplier</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+var API_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';
+var boToken = localStorage.getItem('bo_token');
+var boUser = JSON.parse(localStorage.getItem('bo_user') || 'null');
+var currentAppsPage = 1;
+var totalApps = 0;
+var appsPerPage = 20;
+var debounceTimer = null;
+
+// ===== INIT =====
+function init() {
+  if (boToken && boUser) {
+    showApp();
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin() {
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('appShell').classList.remove('active');
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appShell').classList.add('active');
+  document.getElementById('sidebarUserName').textContent = boUser.fullname || boUser.email;
+  document.getElementById('sidebarUserRole').textContent = boUser.role || 'analyst';
+  loadDashboard();
+}
+
+function logout() {
+  localStorage.removeItem('bo_token');
+  localStorage.removeItem('bo_user');
+  boToken = null;
+  boUser = null;
+  showLogin();
+}
+
+// ===== API =====
+async function apiCall(body) {
+  var res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + boToken
+    },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ===== LOGIN =====
+async function handleBackofficeLogin(e) {
+  e.preventDefault();
+  var btn = document.getElementById('loginBtn');
+  var err = document.getElementById('loginError');
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+  err.style.display = 'none';
+
+  try {
+    var result = await apiCall({
+      action: 'backoffice_login',
+      email: document.getElementById('loginEmail').value,
+      password: document.getElementById('loginPassword').value
+    });
+
+    if (result.success) {
+      boToken = result.token;
+      boUser = result.user;
+      localStorage.setItem('bo_token', boToken);
+      localStorage.setItem('bo_user', JSON.stringify(boUser));
+      showApp();
+    } else {
+      err.textContent = result.error || 'Login failed';
+      err.style.display = 'block';
+    }
+  } catch (ex) {
+    err.textContent = 'Connection error. Please try again.';
+    err.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Sign in';
+}
+
+// ===== NAVIGATION =====
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.sidebar-nav a').forEach(function(a) { a.classList.remove('active'); });
+
+  var el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  var nav = document.querySelector('.sidebar-nav a[data-page="' + page + '"]');
+  if (nav) nav.classList.add('active');
+
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'applications') loadApplications();
+  if (page === 'suppliers') loadSuppliers();
+}
+
+// ===== HELPERS =====
+function esc(str) {
+  var d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+function fmtMoney(n) {
+  return Number(n || 0).toLocaleString('en-EG');
+}
+
+function statusBadge(status) {
+  var map = {
+    'submitted': 'badge-blue', 'ai_reviewed': 'badge-yellow', 'pending_review': 'badge-yellow',
+    'approved': 'badge-green', 'rejected': 'badge-red', 'info_requested': 'badge-gray'
+  };
+  return '<span class="badge ' + (map[status] || 'badge-gray') + '">' + esc(status) + '</span>';
+}
+
+function recBadge(rec) {
+  if (!rec) return '-';
+  var map = { 'APPROVE': 'badge-green', 'REJECT': 'badge-red', 'REVIEW': 'badge-yellow' };
+  return '<span class="badge ' + (map[rec] || 'badge-gray') + '">' + esc(rec) + '</span>';
+}
+
+// ===== DASHBOARD =====
+async function loadDashboard() {
+  try {
+    var result = await apiCall({ action: 'backoffice_dashboard' });
+    if (!result.success) return;
+    var s = result.stats;
+
+    document.getElementById('statTotal').textContent = s.total_applications || 0;
+    document.getElementById('statToday').textContent = s.today || 0;
+    document.getElementById('statWeek').textContent = s.this_week || 0;
+    document.getElementById('statCredit').textContent = fmtMoney(s.total_credit_approved);
+
+    // Status cards
+    var statusHtml = '';
+    var statusMap = s.by_status || {};
+    for (var key in statusMap) {
+      statusHtml += '<div class="stat-card"><div class="stat-label">' + esc(key) + '</div><div class="stat-value">' + statusMap[key] + '</div></div>';
+    }
+    document.getElementById('statusCards').innerHTML = statusHtml;
+
+    // Recent table
+    var tbody = '';
+    (s.recent_applications || []).forEach(function(app) {
+      tbody += '<tr class="clickable" onclick="viewApplication(' + app.id + ')">' +
+        '<td>#' + app.id + '</td>' +
+        '<td>' + esc(app.company_name) + '</td>' +
+        '<td>' + esc(app.email) + '</td>' +
+        '<td>EGP ' + fmtMoney(app.annual_revenue) + '</td>' +
+        '<td>' + statusBadge(app.status) + '</td>' +
+        '<td>' + recBadge(app.ai_recommendation) + '</td>' +
+        '<td>' + esc(app.assessed_at ? app.assessed_at.split(' ')[0] : '-') + '</td>' +
+        '</tr>';
+    });
+    document.getElementById('recentTableBody').innerHTML = tbody || '<tr><td colspan="7" class="empty">No applications yet</td></tr>';
+
+  } catch (ex) {
+    console.error('Dashboard error:', ex);
+  }
+}
+
+// ===== APPLICATIONS LIST =====
+function debounceLoadApps() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(loadApplications, 400);
+}
+
+async function loadApplications() {
+  var tbody = document.getElementById('appsTableBody');
+  tbody.innerHTML = '<tr><td colspan="8" class="loading">Loading...</td></tr>';
+
+  try {
+    var result = await apiCall({
+      action: 'backoffice_applications',
+      search: document.getElementById('appSearch').value,
+      status_filter: document.getElementById('appStatusFilter').value,
+      page: currentAppsPage,
+      per_page: appsPerPage
+    });
+
+    if (!result.success) return;
+    totalApps = result.total || 0;
+
+    var html = '';
+    (result.applications || []).forEach(function(app) {
+      html += '<tr class="clickable" onclick="viewApplication(' + app.id + ')">' +
+        '<td>#' + app.id + '</td>' +
+        '<td>' + esc(app.company_name) + '</td>' +
+        '<td>' + esc(app.firstname + ' ' + app.lastname) + '</td>' +
+        '<td>EGP ' + fmtMoney(app.annual_revenue) + '</td>' +
+        '<td>' + statusBadge(app.status) + '</td>' +
+        '<td>' + recBadge(app.claude_recommendation) + '</td>' +
+        '<td>' + (app.claude_confidence ? app.claude_confidence + '%' : '-') + '</td>' +
+        '<td>' + esc(app.assessed_at ? app.assessed_at.split(' ')[0] : '-') + '</td>' +
+        '</tr>';
+    });
+
+    tbody.innerHTML = html || '<tr><td colspan="8" class="empty">No applications found</td></tr>';
+    document.getElementById('appsPagInfo').textContent =
+      'Showing ' + ((currentAppsPage - 1) * appsPerPage + 1) + '-' + Math.min(currentAppsPage * appsPerPage, totalApps) + ' of ' + totalApps;
+
+  } catch (ex) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Error loading applications</td></tr>';
+  }
+}
+
+function appsPage(dir) {
+  var maxPage = Math.ceil(totalApps / appsPerPage) || 1;
+  currentAppsPage = Math.max(1, Math.min(maxPage, currentAppsPage + dir));
+  loadApplications();
+}
+
+// ===== APPLICATION DETAIL =====
+async function viewApplication(id) {
+  navigateTo('detail');
+  document.getElementById('detailContent').innerHTML = '<div class="loading">Loading application #' + id + '...</div>';
+  document.getElementById('detailBreadcrumb').textContent = '#' + id;
+
+  try {
+    var result = await apiCall({ action: 'backoffice_application_detail', application_id: id });
+    if (!result.success) {
+      document.getElementById('detailContent').innerHTML = '<div class="empty">Error: ' + esc(result.error) + '</div>';
+      return;
+    }
+
+    var app = result.application;
+    var cr = result.claude_report;
+    var docs = result.documents || [];
+    var decisions = result.decisions || [];
+
+    document.getElementById('detailTitle').textContent = 'Application #' + app.id + ' - ' + (app.company_name || 'Unknown');
+
+    var html = '';
+
+    // Customer info + financial info
+    html += '<div class="detail-grid">';
+    html += '<div class="detail-section"><h3>Customer Information</h3>';
+    html += detailRow('Company', app.company_name);
+    html += detailRow('Applicant', app.firstname + ' ' + app.lastname);
+    html += detailRow('Email', app.email);
+    html += detailRow('Mobile', app.mobile);
+    html += detailRow('Industry', app.industry);
+    html += detailRow('Years in Business', app.years_in_business || '-');
+    html += detailRow('Business Description', app.business_description || '-');
+    html += '</div>';
+
+    html += '<div class="detail-section"><h3>Financial Information</h3>';
+    html += detailRow('Declared Annual Revenue', 'EGP ' + fmtMoney(app.annual_revenue));
+    html += detailRow('Declared Monthly Inflows', app.declared_monthly_inflows ? 'EGP ' + fmtMoney(app.declared_monthly_inflows) : '-');
+    html += detailRow('Requested Amount', app.requested_amount ? 'EGP ' + fmtMoney(app.requested_amount) : '-');
+    html += detailRow('Requested Installments', app.requested_installments ? app.requested_installments + ' months' : '-');
+    html += detailRow('Application Status', statusBadge(app.application_status));
+    html += detailRow('Submitted', app.assessed_at || '-');
+    html += '</div>';
+    html += '</div>';
+
+    // Rule-based assessment
+    html += '<div class="detail-grid">';
+    html += '<div class="detail-section"><h3>Rule-Based Assessment</h3>';
+    html += detailRow('Decision', app.ai_decision);
+    html += detailRow('Credit Limit', 'EGP ' + fmtMoney(app.ai_credit_limit));
+    html += detailRow('Tenor', app.ai_tenor_months + ' months');
+    html += detailRow('Interest Rate', app.ai_interest_rate + '% annual');
+    html += detailRow('Confidence', app.ai_confidence_score + '%');
+    if (app.ai_risk_factors && app.ai_risk_factors.length) {
+      html += '<div style="margin-top:0.8rem;"><strong style="font-size:0.85rem;">Risk Factors:</strong><ul style="font-size:0.85rem;margin:0.3rem 0 0 1rem;color:var(--text-muted);">';
+      app.ai_risk_factors.forEach(function(f) { html += '<li>' + esc(f) + '</li>'; });
+      html += '</ul></div>';
+    }
+    html += '</div>';
+
+    // Documents
+    html += '<div class="detail-section"><h3>Uploaded Documents (' + docs.length + ')</h3>';
+    if (docs.length === 0) {
+      html += '<div class="empty" style="padding:1rem;">No documents uploaded</div>';
+    } else {
+      docs.forEach(function(doc) {
+        html += '<div class="detail-row"><span class="label">' + esc(doc.type) + '</span><span class="value">' + esc(doc.filename) + '</span></div>';
+      });
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Claude AI Report
+    if (cr) {
+      var recClass = cr.recommendation === 'APPROVE' ? 'rec-approve' : cr.recommendation === 'REJECT' ? 'rec-reject' : 'rec-review';
+      html += '<div class="ai-report">';
+      html += '<h3>&#x1F916; Claude AI Credit Report</h3>';
+
+      html += '<div class="recommendation ' + recClass + '">';
+      html += '<h2>Recommendation: ' + esc(cr.recommendation) + '</h2>';
+      html += '<div class="score">' + cr.confidence_score + '%</div>';
+      html += '<div>Confidence Score</div>';
+      html += '</div>';
+
+      html += '<div class="detail-grid" style="margin-top:1rem;">';
+      html += '<div><strong>Recommended Credit Limit:</strong> EGP ' + fmtMoney(cr.recommended_limit) + '</div>';
+      html += '<div><strong>Recommended Tenor:</strong> ' + cr.recommended_tenor + ' months</div>';
+      html += '</div>';
+
+      if (cr.executive_summary) {
+        html += '<div style="margin-top:1rem;"><strong>Executive Summary:</strong></div>';
+        html += '<div class="executive-summary">' + esc(cr.executive_summary) + '</div>';
+      }
+
+      // Revenue analysis
+      if (cr.revenue_analysis && cr.revenue_analysis.declared_annual) {
+        var ra = cr.revenue_analysis;
+        html += '<div style="margin-top:1rem;"><strong>Revenue Analysis:</strong></div>';
+        html += '<div class="detail-grid" style="margin-top:0.5rem;">';
+        html += '<div class="detail-section" style="padding:1rem;">';
+        html += detailRow('Declared Annual', 'EGP ' + fmtMoney(ra.declared_annual));
+        html += detailRow('Verified Annual', ra.verified_annual ? 'EGP ' + fmtMoney(ra.verified_annual) : '-');
+        html += detailRow('Discrepancy', ra.discrepancy_percent != null ? ra.discrepancy_percent + '%' : '-');
+        html += detailRow('Trend', ra.monthly_trend || '-');
+        html += detailRow('Verdict', ra.revenue_verdict || '-');
+        html += '</div>';
+
+        if (cr.bank_analysis) {
+          var ba = cr.bank_analysis;
+          html += '<div class="detail-section" style="padding:1rem;">';
+          html += '<strong>Bank Analysis</strong>';
+          html += detailRow('Total Inflows', 'EGP ' + fmtMoney(ba.total_inflows));
+          html += detailRow('Transactions', ba.transactions_analyzed || '-');
+          html += detailRow('Months Covered', ba.months_covered || '-');
+          html += detailRow('Bounces', ba.bounce_count != null ? ba.bounce_count : '-');
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Risk + positive factors
+      html += '<div class="detail-grid" style="margin-top:1rem;">';
+      if (cr.risk_factors && cr.risk_factors.length) {
+        html += '<div><strong style="color:#b91c1c;">Risk Factors:</strong><ul class="factor-list">';
+        cr.risk_factors.forEach(function(f) { html += '<li><span class="icon" style="color:#b91c1c;">&#x26A0;</span> ' + esc(f) + '</li>'; });
+        html += '</ul></div>';
+      }
+      if (cr.positive_factors && cr.positive_factors.length) {
+        html += '<div><strong style="color:var(--primary);">Positive Factors:</strong><ul class="factor-list">';
+        cr.positive_factors.forEach(function(f) { html += '<li><span class="icon" style="color:var(--primary);">&#x2714;</span> ' + esc(f) + '</li>'; });
+        html += '</ul></div>';
+      }
+      html += '</div>';
+      html += '</div>';
+    } else {
+      html += '<div class="ai-report"><h3>&#x1F916; Claude AI Credit Report</h3><div class="empty"><div class="icon">&#x1F50D;</div>No AI report available for this application</div></div>';
+    }
+
+    // Previous decisions
+    if (decisions.length > 0) {
+      html += '<div class="card" style="margin-bottom:1.5rem;"><div class="card-header"><h3>Previous Decisions</h3></div><div class="card-body"><table>';
+      html += '<thead><tr><th>Decision</th><th>Credit Limit</th><th>Tenor</th><th>By</th><th>Date</th><th>Notes</th></tr></thead><tbody>';
+      decisions.forEach(function(d) {
+        html += '<tr><td>' + recBadge(d.decision) + '</td><td>EGP ' + fmtMoney(d.final_credit_limit) + '</td><td>' + (d.final_tenor_months || '-') + '</td><td>' + esc(d.decided_by) + '</td><td>' + esc(d.decided_at ? d.decided_at.split(' ')[0] : '-') + '</td><td>' + esc(d.internal_notes || d.override_reason || '-') + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    // Decision panel
+    if (app.application_status !== 'approved' && app.application_status !== 'rejected') {
+      html += '<div class="decision-panel"><h3>Make Decision</h3>';
+      html += '<div class="form-row">';
+      html += '<div><label>Credit Limit (EGP)</label><input type="number" id="decCreditLimit" value="' + (cr ? cr.recommended_limit : app.ai_credit_limit || 0) + '" /></div>';
+      html += '<div><label>Tenor (months)</label><select id="decTenor"><option value="3">3 months</option><option value="6" ' + (((cr ? cr.recommended_tenor : app.ai_tenor_months) || 6) == 6 ? 'selected' : '') + '>6 months</option><option value="9">9 months</option><option value="12" ' + (((cr ? cr.recommended_tenor : app.ai_tenor_months) || 0) == 12 ? 'selected' : '') + '>12 months</option><option value="18" ' + (((cr ? cr.recommended_tenor : app.ai_tenor_months) || 0) == 18 ? 'selected' : '') + '>18 months</option></select></div>';
+      html += '</div>';
+      html += '<div class="form-row">';
+      html += '<div><label>Interest Rate (% annual)</label><input type="number" id="decRate" value="42" step="0.1" /></div>';
+      html += '<div><label>Override Reason (if different from AI)</label><input type="text" id="decOverride" placeholder="Optional" /></div>';
+      html += '</div>';
+      html += '<div><label>Internal Notes</label><textarea id="decNotes" placeholder="Add notes for the team..."></textarea></div>';
+      html += '<div class="decision-buttons">';
+      html += '<button class="btn btn-success" onclick="submitDecision(' + app.id + ', \'APPROVED\')">Approve</button>';
+      html += '<button class="btn btn-danger" onclick="submitDecision(' + app.id + ', \'REJECTED\')">Reject</button>';
+      html += '<button class="btn btn-warning" onclick="submitDecision(' + app.id + ', \'REQUEST_INFO\')">Request Info</button>';
+      html += '</div></div>';
+    }
+
+    document.getElementById('detailContent').innerHTML = html;
+
+  } catch (ex) {
+    document.getElementById('detailContent').innerHTML = '<div class="empty">Error loading application: ' + esc(ex.message) + '</div>';
+  }
+}
+
+function detailRow(label, value) {
+  return '<div class="detail-row"><span class="label">' + esc(label) + '</span><span class="value">' + (value || '-') + '</span></div>';
+}
+
+// ===== DECISION =====
+async function submitDecision(appId, decision) {
+  if (!confirm('Are you sure you want to ' + decision.toLowerCase() + ' this application?')) return;
+
+  try {
+    var result = await apiCall({
+      action: 'backoffice_decide',
+      application_id: appId,
+      decision: decision,
+      final_credit_limit: parseFloat(document.getElementById('decCreditLimit').value) || 0,
+      final_tenor_months: parseInt(document.getElementById('decTenor').value) || 6,
+      final_interest_rate: parseFloat(document.getElementById('decRate').value) || 42,
+      override_reason: document.getElementById('decOverride').value,
+      internal_notes: document.getElementById('decNotes').value
+    });
+
+    if (result.success) {
+      alert('Decision saved successfully!');
+      viewApplication(appId);
+    } else {
+      alert('Error: ' + (result.error || 'Failed to save decision'));
+    }
+  } catch (ex) {
+    alert('Error saving decision: ' + ex.message);
+  }
+}
+
+// ===== SUPPLIERS =====
+async function loadSuppliers() {
+  var tbody = document.getElementById('suppliersTableBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading...</td></tr>';
+
+  try {
+    var result = await apiCall({ action: 'backoffice_suppliers', operation: 'list' });
+    if (!result.success) return;
+
+    var html = '';
+    (result.suppliers || []).forEach(function(s) {
+      var statusCls = s.status === 'Active' ? 'badge-green' : s.status === 'Inactive' ? 'badge-red' : 'badge-yellow';
+      html += '<tr>' +
+        '<td>' + esc(s.name) + '</td>' +
+        '<td>' + esc(s.category) + '</td>' +
+        '<td>' + esc(s.location) + '</td>' +
+        '<td>EGP ' + fmtMoney(s.invoice_range_min) + ' - ' + fmtMoney(s.invoice_range_max) + '</td>' +
+        '<td><span class="badge ' + statusCls + '">' + esc(s.status) + '</span></td>' +
+        '<td><button class="btn btn-sm btn-outline" onclick="editSupplier(' + s.id + ', \'' + esc(s.name).replace(/'/g, "\\'") + '\', \'' + esc(s.category).replace(/'/g, "\\'") + '\', \'' + esc(s.location).replace(/'/g, "\\'") + '\', ' + s.invoice_range_min + ', ' + s.invoice_range_max + ', \'' + esc(s.payment_terms).replace(/'/g, "\\'") + '\', \'' + esc(s.status) + '\')">Edit</button></td>' +
+        '</tr>';
+    });
+
+    tbody.innerHTML = html || '<tr><td colspan="6" class="empty">No suppliers yet. Add one to get started.</td></tr>';
+  } catch (ex) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Error loading suppliers</td></tr>';
+  }
+}
+
+function openSupplierModal(isEdit) {
+  document.getElementById('supplierModalTitle').textContent = isEdit ? 'Edit Supplier' : 'Add Supplier';
+  if (!isEdit) {
+    document.getElementById('supplierId').value = '';
+    document.getElementById('supplierName').value = '';
+    document.getElementById('supplierCategory').value = '';
+    document.getElementById('supplierLocation').value = '';
+    document.getElementById('supplierMinInvoice').value = '';
+    document.getElementById('supplierMaxInvoice').value = '';
+    document.getElementById('supplierPaymentTerms').value = '';
+    document.getElementById('supplierStatus').value = 'Active';
+  }
+  document.getElementById('supplierModal').classList.add('active');
+}
+
+function closeSupplierModal() {
+  document.getElementById('supplierModal').classList.remove('active');
+}
+
+function editSupplier(id, name, category, location, minInv, maxInv, terms, status) {
+  document.getElementById('supplierId').value = id;
+  document.getElementById('supplierName').value = name;
+  document.getElementById('supplierCategory').value = category;
+  document.getElementById('supplierLocation').value = location;
+  document.getElementById('supplierMinInvoice').value = minInv || '';
+  document.getElementById('supplierMaxInvoice').value = maxInv || '';
+  document.getElementById('supplierPaymentTerms').value = terms;
+  document.getElementById('supplierStatus').value = status;
+  openSupplierModal(true);
+}
+
+async function saveSupplier() {
+  var id = document.getElementById('supplierId').value;
+  var body = {
+    action: 'backoffice_suppliers',
+    operation: id ? 'update' : 'create',
+    name: document.getElementById('supplierName').value,
+    category: document.getElementById('supplierCategory').value,
+    location: document.getElementById('supplierLocation').value,
+    invoice_range_min: parseFloat(document.getElementById('supplierMinInvoice').value) || 0,
+    invoice_range_max: parseFloat(document.getElementById('supplierMaxInvoice').value) || 0,
+    payment_terms: document.getElementById('supplierPaymentTerms').value,
+    status: document.getElementById('supplierStatus').value
+  };
+  if (id) body.supplier_id = parseInt(id);
+
+  try {
+    var result = await apiCall(body);
+    if (result.success) {
+      closeSupplierModal();
+      loadSuppliers();
+    } else {
+      alert(result.error || 'Failed to save supplier');
+    }
+  } catch (ex) {
+    alert('Error: ' + ex.message);
+  }
+}
+
+// ===== START =====
+init();
+</script>
+</body>
+</html>
