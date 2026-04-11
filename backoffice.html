@@ -863,12 +863,11 @@ function logout() {
 
 // ===== API =====
 async function apiCall(body) {
+  var hdrs = { 'Content-Type': 'application/json' };
+  if (boToken) hdrs['Authorization'] = 'Bearer ' + boToken;
   var res = await fetch(API_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + boToken
-    },
+    headers: hdrs,
     body: JSON.stringify(body)
   });
   return res.json();
@@ -883,12 +882,20 @@ async function handleBackofficeLogin(e) {
   btn.textContent = 'Signing in...';
   err.style.display = 'none';
 
+  var emailVal = document.getElementById('loginEmail').value.trim();
+  var passVal = document.getElementById('loginPassword').value;
+
   try {
-    var result = await apiCall({
-      action: 'backoffice_login',
-      email: document.getElementById('loginEmail').value,
-      password: document.getElementById('loginPassword').value
+    var res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'backoffice_login',
+        email: emailVal,
+        password: passVal
+      })
     });
+    var result = await res.json();
 
     if (result.success) {
       boToken = result.token;
