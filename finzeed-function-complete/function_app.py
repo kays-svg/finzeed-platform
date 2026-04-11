@@ -1916,36 +1916,49 @@ def analyze_with_openai(text_content, filename):
         logging.error("❌ Azure OpenAI credentials not configured")
         return None
     
+    # Use full text — large bank statements can be 50K+ chars
+    # GPT-4 supports 128K tokens, so we can send much more text
+    max_text = 100000  # ~25K tokens, well within GPT-4 limits
+    text_to_analyze = text_content[:max_text]
+    text_truncated = len(text_content) > max_text
+    truncation_note = f"\n\nNOTE: This text was truncated from {len(text_content)} to {max_text} characters. Extrapolate if needed." if text_truncated else ""
+
+    logging.info(f"Sending {len(text_to_analyze)} chars to OpenAI (full text: {len(text_content)} chars)")
+
     # Prepare the prompt
     prompt = f"""You are a financial analyst specialized in analyzing bank statements for Egyptian SMEs.
 
-TASK: Analyze this bank statement and extract ONLY the following information.
+TASK: Analyze this COMPLETE bank statement and extract the following information. This statement may cover multiple months — you MUST analyze ALL pages and ALL months.
 
 BANK STATEMENT TEXT:
-{text_content[:15000]}
+{text_to_analyze}
+{truncation_note}
 
 INSTRUCTIONS:
-1. Extract TOTAL INFLOWS (money coming INTO the account):
-   - Include: deposits, incoming transfers, customer payments, sales revenue, wire transfers IN, "IPN Inward", "Cash Deposit", "Account Transfer Collection"
-   - Exclude: withdrawals, ATM, outgoing transfers, fees, purchases, money going OUT, "Outward", "POS Purchase"
-   
-2. Count the NUMBER of inflow transactions
+1. Extract TOTAL INFLOWS (money coming INTO the account) across ALL months in the statement:
+   - Include: deposits, incoming transfers, customer payments, sales revenue, wire transfers IN, "IPN Inward", "Cash Deposit", "Account Transfer Collection", credit entries
+   - Exclude: withdrawals, ATM, outgoing transfers, fees, purchases, money going OUT, "Outward", "POS Purchase", debit entries
 
-3. Determine the TIME PERIOD covered (how many months of data)
+2. Count the NUMBER of inflow transactions across ALL months
+
+3. Determine the TIME PERIOD covered — count how many distinct months appear in the statement dates. A 12-month statement should report months=12.
 
 IMPORTANT RULES:
+- Analyze the ENTIRE statement from start to end — do NOT stop after the first page or first month
 - Only count INFLOWS (credits/deposits/incoming money)
-- Skip OUTFLOWS (debits/withdrawals/outgoing money)  
+- Skip OUTFLOWS (debits/withdrawals/outgoing money)
 - Ignore account balances (we only want transaction amounts)
 - The statement may be in Arabic or English or mixed - handle both
-- Look for transaction patterns and sum ALL inflow amounts
+- Look for transaction patterns and sum ALL inflow amounts across ALL pages and months
+- If the statement covers January to December, months should be 12
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no explanation, no code blocks):
 {{
     "total_inflows": <total number in EGP>,
     "transaction_count": <number of inflow transactions>,
     "months": <number of months covered>,
-    "currency": "EGP"
+    "currency": "EGP",
+    "period": "<start month/year> to <end month/year>"
 }}
 
 If you cannot determine the information, return:
@@ -1977,7 +1990,7 @@ If you cannot determine the information, return:
                 "content": prompt
             }
         ],
-        "max_tokens": 500,
+        "max_tokens": 1000,
         "temperature": 0.1  # Low temperature for consistent, factual extraction
     }
     
@@ -1985,7 +1998,7 @@ If you cannot determine the information, return:
         logging.info(f"🤖 Calling Azure OpenAI ({deployment})...")
         
         # Make request
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
         
         if response.status_code != 200:
             logging.error(f"❌ OpenAI API error: {response.status_code}")
