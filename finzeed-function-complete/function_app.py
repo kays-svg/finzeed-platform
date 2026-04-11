@@ -278,6 +278,9 @@ def handle_register(req_body):
             "message": "Account created!" if not email_sent else "Account created! Please check your email to verify your account before signing in."
         }, 201)
 
+    except pyodbc.OperationalError as e:
+        logging.error(f"Registration DB error: {str(e)}")
+        return make_response({"error": "Service temporarily unavailable. Please wait a moment and try again."}, 503)
     except Exception as e:
         logging.error(f"Registration error: {str(e)}")
         import traceback
