@@ -48,17 +48,36 @@ document_analysis_client = DocumentAnalysisClient(
 
 def get_db_connection():
     """Get database connection with retry for serverless DB auto-pause resume"""
+    import time
     connection_string = os.environ.get('SQL_CONNECTION_STRING')
     if not connection_string:
         raise Exception("SQL_CONNECTION_STRING not found in environment variables")
 
+    last_err = None
+    for attempt in range(3):
+        try:
+            return pyodbc.connect(connection_string)
+        except (pyodbc.OperationalError, pyodbc.Error) as e:
+            last_err = e
+            logging.warning(f"DB connection attempt {attempt+1} failed: {e}")
+            if attempt < 2:
+                time.sleep(10 * (attempt + 1))  # 10s, then 20s
+    raise last_err
+
+
+# ========== DB KEEP-ALIVE TIMER ==========
+@app.timer_trigger(schedule="0 */45 * * * *", arg_name="timer", run_on_startup=False)
+def db_keepalive(timer: func.TimerRequest) -> None:
+    """Ping the database every 45 minutes to prevent serverless auto-pause"""
     try:
-        return pyodbc.connect(connection_string)
-    except pyodbc.OperationalError:
-        # Serverless DB may be paused — retry once after brief wait
-        import time
-        time.sleep(5)
-        return pyodbc.connect(connection_string)
+        conn = pyodbc.connect(os.environ.get('SQL_CONNECTION_STRING', ''))
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        logging.info("DB keep-alive ping successful")
+    except Exception as e:
+        logging.warning(f"DB keep-alive ping failed: {e}")
 
 # ========== AUTH UTILITIES ==========
 
