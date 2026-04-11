@@ -494,7 +494,8 @@ def handle_profile(req, req_body):
                        COALESCE(a.application_status, 'submitted') as app_status,
                        ad.decision as final_decision,
                        ad.final_credit_limit, ad.final_tenor_months,
-                       a.customer_notified
+                       a.customer_notified,
+                       ad.notes as decision_notes
                 FROM applications a
                 LEFT JOIN application_decisions ad ON a.id = ad.application_id
                 WHERE a.user_id = ?
@@ -504,14 +505,19 @@ def handle_profile(req, req_body):
                 app_status = app_row[3] or 'submitted'
                 final_decision = app_row[4]
                 notified = app_row[7]
+                decision_notes = app_row[8] or ''
 
                 # Customer sees friendly status
-                if final_decision == 'APPROVED' and notified:
+                if final_decision == 'APPROVED':
                     display_status = 'Approved'
                     display_credit = float(app_row[5]) if app_row[5] else 0
                     display_tenor = app_row[6] or 0
-                elif final_decision == 'REJECTED' and notified:
+                elif final_decision == 'REJECTED':
                     display_status = 'Rejected'
+                    display_credit = 0
+                    display_tenor = 0
+                elif final_decision == 'REQUEST_INFO':
+                    display_status = 'Info Requested'
                     display_credit = 0
                     display_tenor = 0
                 elif app_status in ('ai_reviewed', 'pending_review'):
@@ -529,7 +535,8 @@ def handle_profile(req, req_body):
                     "status": display_status,
                     "credit_limit": display_credit,
                     "tenor_months": display_tenor,
-                    "assessed_at": str(app_row[2]) if app_row[2] else ''
+                    "assessed_at": str(app_row[2]) if app_row[2] else '',
+                    "notes": decision_notes if final_decision == 'REQUEST_INFO' else ''
                 })
         except Exception as e:
             logging.warning(f"Could not fetch applications: {str(e)}")
