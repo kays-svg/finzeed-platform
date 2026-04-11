@@ -47,12 +47,18 @@ document_analysis_client = DocumentAnalysisClient(
 ) if doc_intel_endpoint and doc_intel_key else None
 
 def get_db_connection():
-    """Get database connection"""
+    """Get database connection with retry for serverless DB auto-pause resume"""
     connection_string = os.environ.get('SQL_CONNECTION_STRING')
     if not connection_string:
         raise Exception("SQL_CONNECTION_STRING not found in environment variables")
 
-    return pyodbc.connect(connection_string)
+    try:
+        return pyodbc.connect(connection_string)
+    except pyodbc.OperationalError:
+        # Serverless DB may be paused — retry once after brief wait
+        import time
+        time.sleep(5)
+        return pyodbc.connect(connection_string)
 
 # ========== AUTH UTILITIES ==========
 
