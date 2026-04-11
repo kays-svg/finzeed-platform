@@ -1111,8 +1111,22 @@ async function viewApplication(id) {
     if (docs.length === 0) {
       html += '<div class="empty" style="padding:1rem;">No documents uploaded</div>';
     } else {
+      var docTypeLabels = {
+        'bank_statements': 'Bank Statement',
+        'national_id': 'National ID',
+        'iscore': 'i-Score Report',
+        'balance_sheet': 'Balance Sheet',
+        'commercial_registration': 'Commercial Registration',
+        'tax_card': 'Tax Card'
+      };
       docs.forEach(function(doc) {
-        html += '<div class="detail-row"><span class="label">' + esc(doc.type) + '</span><span class="value">' + esc(doc.filename) + '</span></div>';
+        var typeLabel = docTypeLabels[doc.type] || doc.type;
+        var viewBtn = '';
+        if (doc.blob_url && !doc.blob_url.startsWith('upload-pending')) {
+          viewBtn = ' <a href="' + esc(doc.blob_url) + '" target="_blank" style="color:var(--primary);font-size:0.8rem;text-decoration:none;">View / Download</a>';
+        }
+        var sizeStr = doc.file_size ? ' (' + (doc.file_size / 1024).toFixed(1) + ' KB)' : '';
+        html += '<div class="detail-row"><span class="label">' + esc(typeLabel) + '</span><span class="value">' + esc(doc.filename) + sizeStr + viewBtn + '</span></div>';
       });
     }
     html += '</div>';

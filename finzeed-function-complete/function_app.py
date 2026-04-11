@@ -1429,19 +1429,56 @@ def save_application_to_db(data, ai_assessment):
         cursor.execute("SELECT @@IDENTITY")
         application_id = cursor.fetchone()[0]
         
-        # 3. Insert documents if provided
+        # 3. Upload documents to blob storage and save references
         documents = data.get('documents', {})
-        for doc_type, doc_info in documents.items():
-            if doc_info and isinstance(doc_info, dict) and 'blob_url' in doc_info:
+        container_name = 'application-documents'
+        try:
+            blob_service_client.create_container(container_name)
+        except Exception:
+            pass  # Container likely already exists
+
+        for doc_type, doc_list in documents.items():
+            if not doc_list:
+                continue
+            # Handle both list and dict formats
+            if isinstance(doc_list, dict):
+                doc_list = [doc_list]
+            if not isinstance(doc_list, list):
+                continue
+
+            for doc_info in doc_list:
+                if not isinstance(doc_info, dict):
+                    continue
+                filename = doc_info.get('filename', '')
+                if not filename:
+                    continue
+
+                # Upload to blob storage if content is available
+                blob_url = doc_info.get('blob_url', '')
+                file_size = doc_info.get('size', doc_info.get('file_size', 0))
+
+                if not blob_url and doc_info.get('content'):
+                    try:
+                        blob_name = f"{application_id}/{doc_type}/{filename}"
+                        blob_client = blob_service_client.get_blob_client(container_name, blob_name)
+                        file_bytes = base64.b64decode(doc_info['content'])
+                        blob_client.upload_blob(file_bytes, overwrite=True)
+                        blob_url = blob_client.url
+                        file_size = len(file_bytes)
+                        logging.info(f"Uploaded {doc_type}/{filename} to blob storage")
+                    except Exception as blob_err:
+                        logging.warning(f"Blob upload failed for {filename}: {blob_err}")
+                        blob_url = f"upload-pending://{doc_type}/{filename}"
+
                 cursor.execute("""
                     INSERT INTO documents (application_id, document_type, filename, blob_url, file_size)
                     VALUES (?, ?, ?, ?, ?)
                 """, (
                     application_id,
                     doc_type,
-                    doc_info.get('filename', ''),
-                    doc_info.get('blob_url', ''),
-                    doc_info.get('file_size', 0)
+                    filename,
+                    blob_url,
+                    file_size
                 ))
         
         conn.commit()
