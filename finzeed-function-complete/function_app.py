@@ -495,7 +495,7 @@ def handle_profile(req, req_body):
                        ad.decision as final_decision,
                        ad.final_credit_limit, ad.final_tenor_months,
                        a.customer_notified,
-                       ad.notes as decision_notes
+                       ad.internal_notes as decision_notes
                 FROM applications a
                 LEFT JOIN application_decisions ad ON a.id = ad.application_id
                 WHERE a.user_id = ?
@@ -1652,14 +1652,18 @@ def handle_form_data_request(req):
 
         # Save to database
         db_result = save_application_to_db(data, ai_assessment)
+        logging.info(f"DB save result: {db_result}")
 
         # Save Claude credit report if available
         application_id = db_result.get('application_id')
         claude_report = ai_assessment.get('claude_report')
         if claude_report and application_id:
-            save_credit_report(application_id, claude_report)
-            log_audit(None, 'system', 'ai_analysis_complete', 'application', application_id,
-                      json.dumps({"recommendation": claude_report.get('recommendation')}))
+            try:
+                save_credit_report(application_id, claude_report)
+                log_audit(None, 'system', 'ai_analysis_complete', 'application', application_id,
+                          json.dumps({"recommendation": claude_report.get('recommendation')}))
+            except Exception as report_err:
+                logging.error(f"Failed to save credit report: {report_err}")
 
         # NEW FLOW: Customer sees "Application Submitted" — NOT the AI decision
         # The AI decision is stored internally for the backoffice team
