@@ -1396,6 +1396,23 @@ def save_application_to_db(data, ai_assessment):
         claude_report = ai_assessment.get('claude_report')
         app_status = 'ai_reviewed' if claude_report else 'submitted'
 
+        # Helper to convert empty strings to None for numeric fields
+        def to_num(val):
+            if val is None or val == '':
+                return None
+            try:
+                return float(str(val).replace(',', ''))
+            except (ValueError, TypeError):
+                return None
+
+        def to_int(val):
+            if val is None or val == '':
+                return None
+            try:
+                return int(float(str(val).replace(',', '')))
+            except (ValueError, TypeError):
+                return None
+
         # 2. Insert application
         cursor.execute("""
             INSERT INTO applications (
@@ -1409,20 +1426,20 @@ def save_application_to_db(data, ai_assessment):
         """, (
             user_id, data['company'], data['firstname'], data['lastname'],
             data['email'], data['mobile'], data.get('industry'),
-            data.get('revenue'), data.get('purpose'),
+            to_num(data.get('revenue')), data.get('purpose'),
             'ai_assessment', app_status,
             ai_assessment.get('decision'),
-            ai_assessment.get('credit_limit'),
-            ai_assessment.get('tenor_months'),
-            ai_assessment.get('interest_rate'),
-            ai_assessment.get('confidence_score'),
+            to_num(ai_assessment.get('credit_limit')),
+            to_int(ai_assessment.get('tenor_months')),
+            to_num(ai_assessment.get('interest_rate')),
+            to_num(ai_assessment.get('confidence_score')),
             json.dumps(ai_assessment.get('risk_factors', [])),
             json.dumps(ai_assessment.get('recommendations', [])),
-            data.get('requested_amount'),
-            data.get('requested_installments'),
-            data.get('years_in_business'),
-            data.get('business_description'),
-            data.get('declared_monthly_inflows')
+            to_num(data.get('requested_amount')),
+            to_int(data.get('requested_installments')),
+            to_int(data.get('years_in_business')),
+            data.get('business_description') or None,
+            to_num(data.get('declared_monthly_inflows'))
         ))
         
         # Get application_id
