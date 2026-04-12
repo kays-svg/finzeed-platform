@@ -2170,6 +2170,222 @@ def analyze_bank_statements(documents):
         logging.error(traceback.format_exc())
         return None
 
+def extract_document_text(documents, doc_type):
+    """Extract text from a document using Azure Document Intelligence"""
+    doc_list = documents.get(doc_type, [])
+    if not doc_list or not isinstance(doc_list, list) or not document_analysis_client:
+        return None
+
+    all_text = []
+    for idx, doc in enumerate(doc_list, 1):
+        try:
+            file_content = base64.b64decode(doc.get('content', ''))
+            filename = doc.get('filename', f'{doc_type}_{idx}.pdf')
+            logging.info(f"Extracting text from {doc_type}: {filename} ({len(file_content)} bytes)")
+
+            file_stream = io.BytesIO(file_content)
+            poller = document_analysis_client.begin_analyze_document("prebuilt-read", document=file_stream)
+            result = poller.result()
+            page_count = len(result.pages) if result.pages else 0
+
+            if result.content:
+                all_text.append(result.content)
+                logging.info(f"Extracted {len(result.content)} chars from {page_count} pages of {filename}")
+            else:
+                logging.warning(f"No text extracted from {filename}")
+        except Exception as e:
+            logging.error(f"Error extracting {doc_type} {idx}: {str(e)}")
+            continue
+
+    return "\n\n".join(all_text) if all_text else None
+
+
+def analyze_balance_sheet(documents):
+    """Analyze balance sheet using Document Intelligence + OpenAI"""
+    text = extract_document_text(documents, 'balance_sheet')
+    if not text:
+        return None
+
+    api_key = os.environ.get('AZURE_OPENAI_KEY')
+    endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+    deployment = os.environ.get('AZURE_OPENAI_DEPLOYMENT', 'finzeed-chat')
+    if not api_key or not endpoint:
+        return None
+
+    prompt = f"""You are a financial analyst specialized in analyzing balance sheets for Egyptian SMEs.
+
+TASK: Analyze this balance sheet and extract key financial metrics.
+
+BALANCE SHEET TEXT:
+{text[:100000]}
+
+INSTRUCTIONS:
+Extract the following information from the balance sheet:
+1. Total Assets and their breakdown (current assets, fixed assets)
+2. Total Liabilities and their breakdown (current liabilities, long-term liabilities)
+3. Owner's Equity / Shareholders' Equity
+4. Key financial ratios:
+   - Current Ratio (Current Assets / Current Liabilities)
+   - Debt-to-Equity Ratio (Total Liabilities / Equity)
+   - Working Capital (Current Assets - Current Liabilities)
+5. Net Income / Profit if available
+6. Cash and cash equivalents
+7. Accounts receivable and payable
+8. The reporting period/date
+
+The document may be in Arabic or English — handle both.
+
+Return ONLY a valid JSON object (no markdown, no code blocks):
+{{
+    "total_assets": <number or null>,
+    "current_assets": <number or null>,
+    "fixed_assets": <number or null>,
+    "total_liabilities": <number or null>,
+    "current_liabilities": <number or null>,
+    "long_term_liabilities": <number or null>,
+    "equity": <number or null>,
+    "net_income": <number or null>,
+    "cash_and_equivalents": <number or null>,
+    "accounts_receivable": <number or null>,
+    "accounts_payable": <number or null>,
+    "current_ratio": <number or null>,
+    "debt_to_equity": <number or null>,
+    "working_capital": <number or null>,
+    "reporting_period": "<date or period string>",
+    "currency": "EGP",
+    "health_assessment": "strong" or "moderate" or "weak" or "critical",
+    "key_observations": [<list of observation strings>]
+}}"""
+
+    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-08-01-preview"
+    headers = {"Content-Type": "application/json", "api-key": api_key}
+    payload = {
+        "messages": [
+            {"role": "system", "content": "You are a precise financial analyst. Analyze balance sheets and return ONLY valid JSON."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 1500,
+        "temperature": 0.1
+    }
+
+    try:
+        logging.info("Calling OpenAI for balance sheet analysis...")
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        if response.status_code != 200:
+            logging.error(f"OpenAI balance sheet error: {response.status_code} - {response.text[:200]}")
+            return None
+
+        ai_response = response.json()['choices'][0]['message']['content'].strip()
+        ai_clean = ai_response
+        if "```json" in ai_response:
+            ai_clean = ai_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in ai_response:
+            ai_clean = ai_response.split("```")[1].split("```")[0].strip()
+
+        ai_clean = re.sub(r':\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?)',
+            lambda m: ': ' + m.group(1).replace(',', ''), ai_clean)
+
+        result = json.loads(ai_clean)
+        logging.info(f"Balance sheet analysis complete: health={result.get('health_assessment')}")
+        return result
+
+    except Exception as e:
+        logging.error(f"Balance sheet analysis error: {str(e)}")
+        return None
+
+
+def analyze_iscore(documents):
+    """Analyze i-Score credit report using Document Intelligence + OpenAI"""
+    text = extract_document_text(documents, 'iscore')
+    if not text:
+        return None
+
+    api_key = os.environ.get('AZURE_OPENAI_KEY')
+    endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+    deployment = os.environ.get('AZURE_OPENAI_DEPLOYMENT', 'finzeed-chat')
+    if not api_key or not endpoint:
+        return None
+
+    prompt = f"""You are a credit analyst specialized in analyzing Egyptian i-Score credit reports.
+
+TASK: Analyze this i-Score credit report and extract key credit information.
+
+I-SCORE REPORT TEXT:
+{text[:100000]}
+
+INSTRUCTIONS:
+Extract the following from the i-Score report:
+1. Credit score / rating
+2. Number of active credit facilities
+3. Total outstanding debt
+4. Payment history (on-time vs late payments)
+5. Number of credit inquiries
+6. Any defaults or delinquencies
+7. Credit utilization
+8. Oldest and newest account dates
+9. Any legal cases or bounced checks
+
+The document may be in Arabic or English — handle both.
+i-Score is the Egyptian credit bureau. Scores typically range from 400-850.
+
+Return ONLY a valid JSON object (no markdown, no code blocks):
+{{
+    "credit_score": <number or null>,
+    "score_rating": "excellent" or "good" or "fair" or "poor" or "unknown",
+    "active_facilities": <number or null>,
+    "total_outstanding_debt": <number or null>,
+    "total_credit_limit": <number or null>,
+    "credit_utilization_pct": <number or null>,
+    "on_time_payments": <number or null>,
+    "late_payments": <number or null>,
+    "defaults": <number or null>,
+    "bounced_checks": <number or null>,
+    "legal_cases": <number or null>,
+    "credit_inquiries_last_12m": <number or null>,
+    "oldest_account": "<date or null>",
+    "newest_account": "<date or null>",
+    "currency": "EGP",
+    "risk_level": "low" or "medium" or "high" or "very_high",
+    "key_observations": [<list of observation strings>]
+}}"""
+
+    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-08-01-preview"
+    headers = {"Content-Type": "application/json", "api-key": api_key}
+    payload = {
+        "messages": [
+            {"role": "system", "content": "You are a precise credit analyst. Analyze i-Score reports and return ONLY valid JSON."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 1500,
+        "temperature": 0.1
+    }
+
+    try:
+        logging.info("Calling OpenAI for i-Score analysis...")
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        if response.status_code != 200:
+            logging.error(f"OpenAI i-Score error: {response.status_code} - {response.text[:200]}")
+            return None
+
+        ai_response = response.json()['choices'][0]['message']['content'].strip()
+        ai_clean = ai_response
+        if "```json" in ai_response:
+            ai_clean = ai_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in ai_response:
+            ai_clean = ai_response.split("```")[1].split("```")[0].strip()
+
+        ai_clean = re.sub(r':\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?)',
+            lambda m: ': ' + m.group(1).replace(',', ''), ai_clean)
+
+        result = json.loads(ai_clean)
+        logging.info(f"i-Score analysis complete: score={result.get('credit_score')}, risk={result.get('risk_level')}")
+        return result
+
+    except Exception as e:
+        logging.error(f"i-Score analysis error: {str(e)}")
+        return None
+
+
 def parse_bank_transactions(text):
     """Parse bank statement text to extract credit transactions"""
     
@@ -2344,7 +2560,7 @@ def ensure_new_tables(cursor):
     logging.info("Database schema check completed")
 
 
-def analyze_with_claude(data, bank_analysis, openai_extraction=None):
+def analyze_with_claude(data, bank_analysis, balance_sheet_data=None, iscore_data=None):
     """
     Use Anthropic Claude to perform comprehensive credit risk analysis.
 
@@ -2386,6 +2602,42 @@ def analyze_with_claude(data, bank_analysis, openai_extraction=None):
 - Transactions Found: {bank_analysis.get('transactions_found', 0)}
 - Months Analyzed: {bank_analysis.get('months_analyzed', 0)}"""
 
+        # Balance sheet summary
+        balance_sheet_summary = "No balance sheet provided."
+        if balance_sheet_data:
+            balance_sheet_summary = f"""Balance Sheet Analysis (via OpenAI extraction):
+- Total Assets: {balance_sheet_data.get('total_assets', 'N/A')} EGP
+- Current Assets: {balance_sheet_data.get('current_assets', 'N/A')} EGP
+- Total Liabilities: {balance_sheet_data.get('total_liabilities', 'N/A')} EGP
+- Current Liabilities: {balance_sheet_data.get('current_liabilities', 'N/A')} EGP
+- Equity: {balance_sheet_data.get('equity', 'N/A')} EGP
+- Net Income: {balance_sheet_data.get('net_income', 'N/A')} EGP
+- Current Ratio: {balance_sheet_data.get('current_ratio', 'N/A')}
+- Debt-to-Equity: {balance_sheet_data.get('debt_to_equity', 'N/A')}
+- Working Capital: {balance_sheet_data.get('working_capital', 'N/A')} EGP
+- Cash: {balance_sheet_data.get('cash_and_equivalents', 'N/A')} EGP
+- Health Assessment: {balance_sheet_data.get('health_assessment', 'N/A')}
+- Reporting Period: {balance_sheet_data.get('reporting_period', 'N/A')}
+- Key Observations: {', '.join(balance_sheet_data.get('key_observations', []))}"""
+
+        # i-Score summary
+        iscore_summary = "No i-Score report provided."
+        if iscore_data:
+            iscore_summary = f"""i-Score Credit Report Analysis (via OpenAI extraction):
+- Credit Score: {iscore_data.get('credit_score', 'N/A')}
+- Score Rating: {iscore_data.get('score_rating', 'N/A')}
+- Risk Level: {iscore_data.get('risk_level', 'N/A')}
+- Active Credit Facilities: {iscore_data.get('active_facilities', 'N/A')}
+- Total Outstanding Debt: {iscore_data.get('total_outstanding_debt', 'N/A')} EGP
+- Credit Utilization: {iscore_data.get('credit_utilization_pct', 'N/A')}%
+- On-Time Payments: {iscore_data.get('on_time_payments', 'N/A')}
+- Late Payments: {iscore_data.get('late_payments', 'N/A')}
+- Defaults: {iscore_data.get('defaults', 'N/A')}
+- Bounced Checks: {iscore_data.get('bounced_checks', 'N/A')}
+- Legal Cases: {iscore_data.get('legal_cases', 'N/A')}
+- Credit Inquiries (12m): {iscore_data.get('credit_inquiries_last_12m', 'N/A')}
+- Key Observations: {', '.join(iscore_data.get('key_observations', []))}"""
+
         prompt = f"""You are Finzeed's AI Credit Analyst. Analyze this SME credit application and produce a structured credit assessment report.
 
 ## Applicant Information
@@ -2399,6 +2651,10 @@ def analyze_with_claude(data, bank_analysis, openai_extraction=None):
 - Requested Installments: {requested_installments}
 
 ## {bank_summary}
+
+## {balance_sheet_summary}
+
+## {iscore_summary}
 
 ## Finzeed Credit Parameters
 - Credit range: EGP 100,000 to 5,000,000
@@ -2432,6 +2688,18 @@ Analyze all available data and return ONLY a valid JSON object (no markdown, no 
     "months_covered": <number>,
     "bounce_count": <number or null>,
     "seasonal_pattern": <string or null>
+  }},
+  "balance_sheet_analysis": {{
+    "financial_health": "strong" or "moderate" or "weak" or "N/A",
+    "current_ratio_verdict": "<assessment string>",
+    "debt_level_verdict": "<assessment string>",
+    "key_concerns": [<list of strings>]
+  }},
+  "iscore_analysis": {{
+    "credit_score": <number or null>,
+    "risk_level": "low" or "medium" or "high" or "very_high" or "N/A",
+    "payment_history_verdict": "<assessment string>",
+    "key_concerns": [<list of strings>]
   }},
   "risk_factors": [<list of risk strings>],
   "positive_factors": [<list of positive strings>],
@@ -2495,8 +2763,9 @@ def save_credit_report(application_id, claude_report):
                 application_id, ai_recommendation, confidence_score,
                 recommended_limit, recommended_tenor,
                 revenue_analysis, bank_analysis,
+                balance_sheet_analysis, iscore_analysis,
                 risk_factors, positive_factors, executive_summary, full_report
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             application_id,
             claude_report.get('recommendation', 'REVIEW'),
@@ -2505,6 +2774,8 @@ def save_credit_report(application_id, claude_report):
             claude_report.get('recommended_tenor_months', 6),
             json.dumps(claude_report.get('revenue_analysis', {})),
             json.dumps(claude_report.get('bank_analysis', {})),
+            json.dumps(claude_report.get('balance_sheet_analysis', {})),
+            json.dumps(claude_report.get('iscore_analysis', {})),
             json.dumps(claude_report.get('risk_factors', [])),
             json.dumps(claude_report.get('positive_factors', [])),
             claude_report.get('executive_summary', ''),
@@ -2547,9 +2818,16 @@ def perform_ai_assessment(data):
         except:
             revenue = 0
     
-    # Analyze bank statements
+    # Analyze all documents
     bank_analysis = analyze_bank_statements(documents)
-    
+    balance_sheet_analysis = analyze_balance_sheet(documents)
+    iscore_analysis = analyze_iscore(documents)
+
+    if balance_sheet_analysis:
+        logging.info(f"Balance sheet: health={balance_sheet_analysis.get('health_assessment')}")
+    if iscore_analysis:
+        logging.info(f"i-Score: score={iscore_analysis.get('credit_score')}, risk={iscore_analysis.get('risk_level')}")
+
     revenue_verification_note = None
     revenue_mismatch = False
     verified_revenue = revenue
@@ -2653,7 +2931,7 @@ def perform_ai_assessment(data):
     recommendations = [r for r in recommendations if r is not None]
 
     # ===== DUAL-AI: Send all data to Claude for comprehensive analysis =====
-    claude_report = analyze_with_claude(data, bank_analysis)
+    claude_report = analyze_with_claude(data, bank_analysis, balance_sheet_analysis, iscore_analysis)
 
     if claude_report:
         # Claude successfully analyzed — use its recommendation for internal report
@@ -2672,5 +2950,7 @@ def perform_ai_assessment(data):
         'risk_factors': risk_factors,
         'recommendations': recommendations,
         'bank_analysis': bank_analysis,
+        'balance_sheet_analysis': balance_sheet_analysis,
+        'iscore_analysis': iscore_analysis,
         'claude_report': claude_report
     }

@@ -1180,6 +1180,38 @@ async function viewApplication(id) {
         html += '</div>';
       }
 
+      // Balance Sheet analysis
+      if (cr.balance_sheet_analysis && cr.balance_sheet_analysis.financial_health && cr.balance_sheet_analysis.financial_health !== 'N/A') {
+        var bs = cr.balance_sheet_analysis;
+        html += '<div style="margin-top:1rem;"><strong>Balance Sheet Analysis:</strong></div>';
+        html += '<div class="detail-section" style="padding:1rem;margin-top:0.5rem;">';
+        html += detailRow('Financial Health', bs.financial_health || '-');
+        html += detailRow('Current Ratio', bs.current_ratio_verdict || '-');
+        html += detailRow('Debt Level', bs.debt_level_verdict || '-');
+        if (bs.key_concerns && bs.key_concerns.length) {
+          html += '<div style="margin-top:0.5rem;"><strong style="font-size:0.85rem;">Concerns:</strong><ul style="font-size:0.85rem;margin:0.3rem 0 0 1rem;color:var(--text-muted);">';
+          bs.key_concerns.forEach(function(c) { html += '<li>' + esc(c) + '</li>'; });
+          html += '</ul></div>';
+        }
+        html += '</div>';
+      }
+
+      // i-Score analysis
+      if (cr.iscore_analysis && cr.iscore_analysis.risk_level && cr.iscore_analysis.risk_level !== 'N/A') {
+        var is_ = cr.iscore_analysis;
+        html += '<div style="margin-top:1rem;"><strong>i-Score Credit Report:</strong></div>';
+        html += '<div class="detail-section" style="padding:1rem;margin-top:0.5rem;">';
+        html += detailRow('Credit Score', is_.credit_score || '-');
+        html += detailRow('Risk Level', is_.risk_level || '-');
+        html += detailRow('Payment History', is_.payment_history_verdict || '-');
+        if (is_.key_concerns && is_.key_concerns.length) {
+          html += '<div style="margin-top:0.5rem;"><strong style="font-size:0.85rem;">Concerns:</strong><ul style="font-size:0.85rem;margin:0.3rem 0 0 1rem;color:var(--text-muted);">';
+          is_.key_concerns.forEach(function(c) { html += '<li>' + esc(c) + '</li>'; });
+          html += '</ul></div>';
+        }
+        html += '</div>';
+      }
+
       // Risk + positive factors
       html += '<div class="detail-grid" style="margin-top:1rem;">';
       if (cr.risk_factors && cr.risk_factors.length) {
