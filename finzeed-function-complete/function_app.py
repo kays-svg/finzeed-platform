@@ -2109,14 +2109,15 @@ def analyze_bank_statements(documents):
                 
                 logging.info("⏳ Extracting text from PDF...")
                 result = poller.result()
-                logging.info("✅ Text extraction complete!")
-                
+                page_count = len(result.pages) if result.pages else 0
+                logging.info(f"✅ Text extraction complete! Pages extracted: {page_count}")
+
                 if not result.content:
                     logging.warning("⚠️ No text extracted from document")
                     continue
-                
+
                 text_length = len(result.content)
-                logging.info(f"📝 Extracted {text_length} characters")
+                logging.info(f"📝 Extracted {text_length} characters from {page_count} pages")
                 
                 # Send to OpenAI for intelligent analysis
                 logging.info("🤖 Sending to AI for analysis...")
