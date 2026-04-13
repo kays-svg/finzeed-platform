@@ -2674,6 +2674,9 @@
 <script>
   const AZURE_FUNCTION_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';
 
+  // Warm up Azure Function on page load
+  fetch(AZURE_FUNCTION_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{"action":"ping"}'}).catch(function(){});
+
   let bankStatementFiles = [];
   let uploadedFiles = {};
 

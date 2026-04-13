@@ -832,6 +832,9 @@ var appsPerPage = 20;
 var debounceTimer = null;
 
 // ===== INIT =====
+// Warm up the Azure Function on page load (prevents cold start delay)
+fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{"action":"ping"}'}).catch(function(){});
+
 function init() {
   if (boToken && boUser) {
     showApp();

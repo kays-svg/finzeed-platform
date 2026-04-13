@@ -1564,6 +1564,8 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
             
             # Check for auth actions
             action = req_body.get('action')
+            if action == 'ping':
+                return make_response({"ok": True})
             if action == 'register':
                 return handle_register(req_body)
             if action == 'login':
