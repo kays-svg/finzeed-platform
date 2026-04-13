@@ -46,8 +46,10 @@ document_analysis_client = DocumentAnalysisClient(
     credential=AzureKeyCredential(doc_intel_key)
 ) if doc_intel_endpoint and doc_intel_key else None
 
+pyodbc.pooling = True  # Enable built-in ODBC connection pooling
+
 def get_db_connection():
-    """Get database connection with retry for serverless DB auto-pause resume"""
+    """Get database connection with ODBC pooling and retry for serverless DB auto-pause"""
     import time
     connection_string = os.environ.get('SQL_CONNECTION_STRING')
     if not connection_string:
@@ -61,7 +63,7 @@ def get_db_connection():
             last_err = e
             logging.warning(f"DB connection attempt {attempt+1} failed: {e}")
             if attempt < 2:
-                time.sleep(10 * (attempt + 1))  # 10s, then 20s
+                time.sleep(10 * (attempt + 1))
     raise last_err
 
 
@@ -2421,9 +2423,15 @@ def parse_bank_transactions(text):
         'transaction_count': transaction_count
     }
 
+_tables_ensured = False
+
 def ensure_new_tables(cursor):
     """Create new tables for the enhanced platform if they don't exist.
-    Each statement is executed separately to avoid pyodbc multi-statement issues."""
+    Each statement is executed separately to avoid pyodbc multi-statement issues.
+    Only runs once per function app instance."""
+    global _tables_ensured
+    if _tables_ensured:
+        return
     conn = cursor.connection
 
     table_stmts = [
@@ -2557,6 +2565,7 @@ def ensure_new_tables(cursor):
             except:
                 pass
 
+    _tables_ensured = True
     logging.info("Database schema check completed")
 
 
