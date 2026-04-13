@@ -4,7 +4,7 @@ import json
 import os
 import pyodbc
 from datetime import datetime, timedelta, timezone
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 import io
@@ -990,9 +990,42 @@ def handle_backoffice_application_detail(req, req_body):
         """, (app_id,))
         documents = []
         for doc_row in cursor.fetchall():
+            raw_url = doc_row[3] or ''
+            download_url = raw_url
+            # Generate SAS token for secure download
+            if raw_url and 'blob.core.windows.net' in raw_url:
+                try:
+                    # Parse container and blob name from URL
+                    # URL format: https://account.blob.core.windows.net/container/blob_path
+                    url_parts = raw_url.split('.blob.core.windows.net/')
+                    if len(url_parts) == 2:
+                        path_part = url_parts[1]
+                        container_name = path_part.split('/')[0]
+                        blob_name = '/'.join(path_part.split('/')[1:])
+                        account_name = url_parts[0].split('//')[1]
+                        # Get account key from connection string
+                        conn_str = os.environ.get('AzureWebJobsStorage', '')
+                        account_key = None
+                        for part in conn_str.split(';'):
+                            if part.startswith('AccountKey='):
+                                account_key = part[len('AccountKey='):]
+                                break
+                        if account_key:
+                            sas_token = generate_blob_sas(
+                                account_name=account_name,
+                                container_name=container_name,
+                                blob_name=blob_name,
+                                account_key=account_key,
+                                permission=BlobSasPermissions(read=True),
+                                expiry=datetime.now(timezone.utc) + timedelta(hours=24)
+                            )
+                            download_url = f"{raw_url}?{sas_token}"
+                except Exception as sas_err:
+                    logging.warning(f"SAS generation failed for {raw_url}: {sas_err}")
+
             documents.append({
                 "id": doc_row[0], "type": doc_row[1] or '',
-                "filename": doc_row[2] or '', "blob_url": doc_row[3] or '',
+                "filename": doc_row[2] or '', "blob_url": download_url,
                 "file_size": doc_row[4] or 0
             })
 
