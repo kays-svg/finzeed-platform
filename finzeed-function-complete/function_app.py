@@ -739,12 +739,16 @@ def handle_seed_admin(req_body):
 
 def handle_backoffice_dashboard(req, req_body):
     """Get backoffice dashboard statistics"""
+    import time as _time
     payload = verify_backoffice_token(req)
     if not payload:
         return make_response({"error": "Unauthorized"}, 401)
 
     try:
+        t0 = _time.time()
         conn = get_db_connection()
+        t1 = _time.time()
+        logging.info(f"PERF: DB connection took {t1-t0:.3f}s")
         cursor = conn.cursor()
 
         stats = {}
@@ -798,6 +802,8 @@ def handle_backoffice_dashboard(req, req_body):
             })
         stats['recent_applications'] = recent
 
+        t2 = _time.time()
+        logging.info(f"PERF: Dashboard queries took {t2-t1:.3f}s, total {t2-t0:.3f}s")
         cursor.close()
         conn.close()
 
