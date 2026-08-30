@@ -11,6 +11,7 @@ import io
 import re
 import base64
 import hashlib
+import hmac
 import secrets
 import requests  # Added for OpenAI API calls
 
@@ -79,7 +80,7 @@ def get_db_connection():
 def db_keepalive(timer: func.TimerRequest) -> None:
     """Ping the database every 6 hours as a health check (Basic tier is always-on)"""
     try:
-        conn = pyodbc.connect(os.environ.get('SQL_CONNECTION_STRING', ''))
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
         cursor.close()
@@ -277,14 +278,31 @@ def handle_send_marketing_drafts(req_body):
 
 
 def handle_admin_reset_password(req_body):
-    """Admin password reset - requires admin_key"""
+    """Admin password reset — requires the ADMIN_RESET_KEY shared secret.
+
+    This endpoint can set any user's password, so it is gated on a dedicated
+    key rather than JWT_SECRET: JWT_SECRET signs every session token, and
+    sending it in a request body would let anyone who captured it forge logins
+    for arbitrary users. If ADMIN_RESET_KEY is unset the endpoint stays closed.
+    """
+    expected_key = os.environ.get('ADMIN_RESET_KEY', '')
+    if not expected_key:
+        logging.warning("admin_reset_password called but ADMIN_RESET_KEY is not configured")
+        return make_response({"error": "Not found"}, 404)
+
     admin_key = req_body.get('admin_key', '')
-    if admin_key != os.environ.get('JWT_SECRET', ''):
+    # Constant-time compare so the key cannot be recovered byte-by-byte by
+    # timing repeated requests.
+    if not hmac.compare_digest(str(admin_key), expected_key):
+        logging.warning("admin_reset_password: invalid admin key")
         return make_response({"error": "Unauthorized"}, 403)
+
     email = req_body.get('email', '').strip().lower()
     new_password = req_body.get('new_password', '')
     if not email or not new_password:
         return make_response({"error": "Email and new_password required"}, 400)
+    if len(new_password) < 8:
+        return make_response({"error": "Password must be at least 8 characters"}, 400)
     try:
         pw_hash, pw_salt = hash_password(new_password)
         conn = get_db_connection()
@@ -295,11 +313,15 @@ def handle_admin_reset_password(req_body):
             conn.close()
             return make_response({"error": "User not found"}, 404)
         conn.commit()
+        cursor.close()
         conn.close()
+        log_audit(None, 'admin', 'admin_password_reset', 'user', None,
+                  json.dumps({"email": email}))
+        logging.info(f"Admin password reset completed for {email}")
         return make_response({"success": True, "message": f"Password reset for {email}"})
     except Exception as e:
         logging.error(f"Password reset error: {e}")
-        return make_response({"error": str(e)}, 500)
+        return make_response({"error": "Password reset failed"}, 500)
 
 def handle_register(req_body):
     """Handle user registration with email verification"""
@@ -2304,6 +2326,7 @@ def analyze_pdf_chunked(file_content, filename, prompt_text, max_tokens=1500, ch
     # Per-month dedup: key=month string (e.g., "2025-03"), value=best chunk values
     month_data = {}
     chunk_count = 0
+    undated_months = 0  # months reported by chunks that gave no per-month breakdown
 
     for chunk_start in range(0, total_pages, chunk_size):
         chunk_end = min(chunk_start + chunk_size, total_pages)
@@ -2339,6 +2362,9 @@ def analyze_pdf_chunked(file_content, filename, prompt_text, max_tokens=1500, ch
                 'inflows': float(chunk_result.get('total_inflows', 0) or 0),
                 'tx': int(chunk_result.get('transaction_count', 0) or 0)
             }
+            # A chunk is a page range, not a month. Carry the chunk's own month
+            # count so the total is not simply the number of chunks.
+            undated_months += int(chunk_result.get('months', 0) or 0)
 
     if chunk_count == 0 or not month_data:
         return None
@@ -2346,7 +2372,8 @@ def analyze_pdf_chunked(file_content, filename, prompt_text, max_tokens=1500, ch
     # Aggregate deduped per-month data
     total_inflows = sum(m['inflows'] for m in month_data.values())
     total_tx = sum(m['tx'] for m in month_data.values())
-    months = len(month_data)
+    dated_months = sum(1 for k in month_data if not k.startswith('chunk_'))
+    months = dated_months + undated_months
 
     logging.info(f"Aggregated {chunk_count} chunks → {months} unique months, "
                  f"{total_inflows:,.2f} EGP inflows, {total_tx} transactions")
@@ -2404,7 +2431,8 @@ CRITICAL: List ALL months you see in per_month. If the statement spans Jan-Dec, 
     try:
         total_inflows = 0
         transactions_found = 0
-        months_analyzed = 0
+        months_seen = set()      # distinct "YYYY-MM" keys across every statement
+        undated_months = 0       # months from statements with no per-month breakdown
 
         for idx, statement in enumerate(bank_statements, 1):
             try:
@@ -2424,29 +2452,49 @@ CRITICAL: List ALL months you see in per_month. If the statement spans Jan-Dec, 
 
                 logging.info("🤖 Sending PDF pages as images to Azure GPT-4.1 Vision...")
                 ai_result = analyze_pdf_chunked(file_content, filename, bank_prompt, max_tokens=3000, chunk_size=10, dpi=120)
-                
+
                 if ai_result:
                     inflows = float(ai_result.get('total_inflows', 0) or 0)
                     tx_count = int(ai_result.get('transaction_count', 0) or 0)
                     months = int(ai_result.get('months', 0) or 0)
                     total_inflows += inflows
                     transactions_found += tx_count
-                    months_analyzed += months
+
+                    # Track which calendar months this statement covers. Applicants
+                    # routinely upload several statements over overlapping periods
+                    # (a second bank account, or a re-issued statement), so summing
+                    # each statement's month count inflates the denominator and
+                    # understates monthly revenue.
+                    statement_months = {m.get('month') for m in ai_result.get('per_month', [])
+                                        if isinstance(m, dict) and m.get('month')}
+                    if statement_months:
+                        months_seen.update(statement_months)
+                    else:
+                        # No per-month breakdown — fall back to this statement's own
+                        # count, which cannot be deduplicated against the others.
+                        undated_months += months
 
                     logging.info(f"✅ AI found {tx_count} transactions = {inflows:,.2f} EGP across {months} months")
                 else:
                     logging.warning(f"⚠️ AI analysis failed for statement {idx}")
-                
+
             except Exception as e:
                 logging.error(f"❌ Error analyzing statement {idx}: {str(e)}")
                 import traceback
                 logging.error(traceback.format_exc())
                 continue
-        
+
+        months_analyzed = len(months_seen) + undated_months
+        if months_seen:
+            logging.info(f"📅 Distinct months across all statements: {sorted(months_seen)}")
+        if undated_months:
+            logging.warning(f"⚠️ {undated_months} month(s) came from statements with no "
+                            f"per-month breakdown and could not be deduplicated")
+
         if months_analyzed == 0 or total_inflows == 0:
             logging.warning("⚠️ No valid transactions found")
             return None
-        
+
         # Calculate averages
         monthly_average = total_inflows / months_analyzed if months_analyzed > 0 else 0
         annual_estimate = monthly_average * 12
@@ -2525,7 +2573,11 @@ def analyze_bank_statements_legacy(documents):
                 if ai_result:
                     total_inflows += ai_result['total_inflows']
                     transactions_found += ai_result['transaction_count']
-                    months_analyzed += ai_result['months']
+                    # The legacy prompt returns no per-month breakdown, so overlapping
+                    # statements cannot be deduplicated here. Take the longest single
+                    # statement rather than summing, which would inflate the
+                    # denominator and understate monthly revenue.
+                    months_analyzed = max(months_analyzed, int(ai_result['months'] or 0))
             except Exception as e:
                 logging.error(f"Legacy analysis error for statement {idx}: {e}")
                 continue
@@ -2910,6 +2962,19 @@ def ensure_new_tables(cursor):
             created_at DATETIME DEFAULT GETDATE()
         )""",
 
+        # The CREATE TABLE above only runs when credit_reports is absent, so a
+        # table created before these columns existed would never gain them and
+        # every report INSERT would fail silently. Add them explicitly.
+        """IF EXISTS (SELECT * FROM sysobjects WHERE name='credit_reports' AND xtype='U')
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credit_reports' AND COLUMN_NAME='balance_sheet_analysis')
+                ALTER TABLE credit_reports ADD balance_sheet_analysis NVARCHAR(MAX) NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credit_reports' AND COLUMN_NAME='iscore_analysis')
+                ALTER TABLE credit_reports ADD iscore_analysis NVARCHAR(MAX) NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credit_reports' AND COLUMN_NAME='identity_verification')
+                ALTER TABLE credit_reports ADD identity_verification NVARCHAR(MAX) NULL;
+        END""",
+
         """IF EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='user_id')
@@ -2961,19 +3026,28 @@ def ensure_new_tables(cursor):
         ALTER TABLE applications ADD declared_monthly_inflows DECIMAL(18,2)""",
     ]
 
+    failures = 0
     for stmt in table_stmts:
         try:
             cursor.execute(stmt)
             conn.commit()
         except Exception as e:
+            failures += 1
             logging.warning(f"Schema stmt skipped: {str(e)[:100]}")
             try:
                 conn.rollback()
             except:
                 pass
 
-    _tables_ensured = True
-    logging.info("Database schema check completed")
+    # Only latch the "done" flag on a clean pass. A transient failure (DB cold
+    # start, a dropped connection) would otherwise leave this instance
+    # permanently convinced the schema is current and never retry.
+    if failures == 0:
+        _tables_ensured = True
+        logging.info("Database schema check completed")
+    else:
+        logging.warning(f"Database schema check completed with {failures} failed "
+                        f"statement(s) — will retry on next request")
 
 
 def analyze_with_claude(data, bank_analysis, balance_sheet_data=None, iscore_data=None):
