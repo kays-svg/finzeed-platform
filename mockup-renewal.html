@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finzeed - Renewal UX Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #0a7c1a;
+      --primary-dark: #065c10;
+      --primary-light: #e6f5e8;
+      --bg: #f6f9f7;
+      --bg-white: #ffffff;
+      --text-main: #0e1a11;
+      --text-muted: #556b5e;
+      --card-radius: 16px;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); line-height: 1.6; }
+    h1,h2,h3,h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    .mockup-header {
+      background: linear-gradient(135deg, #041f08, #0d5a1a);
+      color: white;
+      padding: 2rem 2.5rem;
+      text-align: center;
+    }
+    .mockup-header h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .mockup-header p { color: rgba(255,255,255,0.6); font-size: 0.9rem; }
+    .mockup-label {
+      display: inline-block;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 0.3rem 1rem;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      color: #a3e6b0;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; }
+    .section-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.3rem; }
+    .section-sub { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 2rem; }
+
+    /* ===== ACTIVE CREDIT LINE CARD ===== */
+    .credit-line-card {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(0,0,0,0.04);
+      border-left: 4px solid var(--primary);
+      margin-bottom: 2rem;
+    }
+    .credit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .credit-status {
+      display: inline-block;
+      padding: 0.25rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .status-active { background: var(--primary-light); color: var(--primary); }
+    .status-expiring { background: #fffbeb; color: #92400e; }
+    .credit-amount { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
+    .credit-amount small { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
+    .credit-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-item label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem; }
+    .stat-item .stat-value { font-size: 1.1rem; font-weight: 700; }
+    .progress-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 8px;
+      transition: width 0.5s ease;
+    }
+    .progress-fill.green { background: linear-gradient(90deg, var(--primary), #10b530); }
+    .progress-fill.amber { background: linear-gradient(90deg, #f59e0b, #eab308); }
+    .progress-label { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* ===== RENEWAL BANNER ===== */
+    .renewal-banner {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1.5px solid #86efac;
+      border-radius: var(--card-radius);
+      padding: 1.8rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .renewal-banner-text h3 { color: var(--primary-dark); font-size: 1.1rem; margin-bottom: 0.3rem; }
+    .renewal-banner-text p { color: #2d5a3a; font-size: 0.9rem; }
+    .renewal-offer {
+      background: white;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .renewal-offer .offer-amount { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+    .renewal-offer .offer-label { font-size: 0.78rem; color: var(--text-muted); }
+    .btn-renew {
+      background: linear-gradient(135deg, #10b530, #0a7c1a);
+      color: white;
+      border: none;
+      padding: 0.85rem 2rem;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 8px 24px rgba(16,181,48,0.35);
+      transition: all 0.3s ease;
+    }
+    .btn-renew:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(16,181,48,0.5); }
+
+    /* ===== FINZEED SCORE ===== */
+    .score-section {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    .score-card {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+    }
+    .score-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: conic-gradient(var(--primary) 0% 82%, #e5e7eb 82% 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      position: relative;
+    }
+    .score-circle-inner {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .score-number { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+    .score-label { font-size: 0.72rem; color: var(--text-muted); }
+    .score-change { color: var(--primary); font-weight: 600; font-size: 0.88rem; margin-bottom: 0.5rem; }
+    .score-factors h4 { font-size: 0.85rem; margin-bottom: 0.8rem; color: var(--text-main); }
+    .factor {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid #f0f3f1;
+      font-size: 0.88rem;
+    }
+    .factor-good { color: var(--primary); font-weight: 600; }
+    .factor-ok { color: #f59e0b; font-weight: 600; }
+
+    /* ===== PAYMENT HISTORY ===== */
+    .history-card {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+    }
+    .history-card h3 { margin-bottom: 1rem; font-size: 1.05rem; }
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.7rem 0;
+      border-bottom: 1px solid #f0f3f1;
+      font-size: 0.88rem;
+    }
+    .payment-row:last-child { border-bottom: none; }
+    .payment-date { color: var(--text-muted); width: 100px; }
+    .payment-desc { flex: 1; }
+    .payment-amount { font-weight: 600; width: 120px; text-align: right; }
+    .payment-status-badge {
+      display: inline-block;
+      padding: 0.15rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      width: 80px;
+      text-align: center;
+    }
+    .paid { background: var(--primary-light); color: var(--primary); }
+    .upcoming { background: #eff6ff; color: #2563eb; }
+
+    /* ===== 1-CLICK RENEWAL FORM ===== */
+    .renewal-form-card {
+      background: var(--bg-white);
+      border-radius: var(--card-radius);
+      padding: 2.5rem;
+      box-shadow: var(--shadow-lg);
+      border-top: 3px solid var(--primary);
+      max-width: 700px;
+      margin: 0 auto 2rem;
+    }
+    .renewal-form-card h2 { text-align: center; margin-bottom: 0.3rem; }
+    .renewal-form-card > p { text-align: center; color: var(--text-muted); margin-bottom: 2rem; font-size: 0.92rem; }
+    .prefilled-section {
+      background: #f8fbf9;
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #e5ede8;
+    }
+    .prefilled-section h4 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.3px; }
+    .prefilled-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .prefilled-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .prefilled-item label { font-size: 0.75rem; color: var(--text-muted); }
+    .prefilled-item span { font-size: 0.92rem; font-weight: 600; }
+    .prefilled-badge {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+    }
+    .upload-only-section {
+      text-align: center;
+      padding: 2rem;
+      border: 2px dashed #cbd8cf;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .upload-only-section:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .upload-only-section h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+    .upload-only-section p { color: var(--text-muted); font-size: 0.88rem; }
+    .renewal-summary {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #86efac;
+    }
+    .renewal-summary h4 { color: var(--primary-dark); margin-bottom: 0.8rem; font-size: 0.95rem; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      text-align: center;
+    }
+    .summary-item .summary-value { font-size: 1.3rem; font-weight: 800; color: var(--primary); }
+    .summary-item .summary-label { font-size: 0.78rem; color: #2d5a3a; }
+    .improvement { font-size: 0.72rem; color: var(--primary); font-weight: 600; }
+
+    .divider {
+      border: none;
+      border-top: 2px dashed #e5e7eb;
+      margin: 3rem 0;
+    }
+    .screen-label {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .screen-label span {
+      background: var(--primary);
+      color: white;
+      padding: 0.4rem 1.2rem;
+      border-radius: 50px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .installment-btn {
+      padding: 0.5rem 1rem;
+      border: 1.5px solid #cbd8cf;
+      border-radius: 10px;
+      background: white;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+    .installment-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .installment-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(10,124,26,0.3);
+    }
+
+    @media (max-width: 768px) {
+      .credit-stats { grid-template-columns: repeat(2, 1fr); }
+      .score-section { grid-template-columns: 1fr; }
+      .prefilled-grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .renewal-banner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="mockup-header">
+  <div class="mockup-label">Interactive UX Mockup</div>
+  <h1>Finzeed Renewal Experience</h1>
+  <p>3 screens showing the renewal journey for returning customers</p>
+</div>
+
+<!-- ========== SCREEN 1: MY CREDIT LINES ========== -->
+<div class="container">
+  <div class="screen-label"><span>Screen 1 - Profile: My Credit Lines</span></div>
+
+  <h2 class="section-title">My Credit Lines</h2>
+  <p class="section-sub">Your active and past credit facilities with Finzeed.</p>
+
+  <!-- Active Credit Line -->
+  <div class="credit-line-card">
+    <div class="credit-header">
+      <div>
+        <span class="credit-status status-expiring">Expiring in 32 days</span>
+        <div class="credit-amount">EGP 1,500,000 <small>approved limit</small></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:0.82rem;color:var(--text-muted)">Application #42</div>
+        <div style="font-size:0.82rem;color:var(--text-muted)">Approved: 15 Oct 2025</div>
+      </div>
+    </div>
+
+    <div class="credit-stats">
+      <div class="stat-item">
+        <label>Used</label>
+        <div class="stat-value">EGP 1,120,000</div>
+      </div>
+      <div class="stat-item">
+        <label>Available</label>
+        <div class="stat-value" style="color:var(--primary)">EGP 380,000</div>
+      </div>
+      <div class="stat-item">
+        <label>Tenor</label>
+        <div class="stat-value">12 months</div>
+      </div>
+      <div class="stat-item">
+        <label>Next payment</label>
+        <div class="stat-value">28 Apr 2026</div>
+      </div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill amber" style="width:75%"></div></div>
+    <div class="progress-label">75% of credit line used - 4 payments remaining</div>
+  </div>
+
+  <!-- Renewal Banner -->
+  <div class="renewal-banner">
+    <div class="renewal-banner-text">
+      <h3>You're eligible for renewal!</h3>
+      <p>Based on your excellent payment history, we've pre-approved a higher limit for you.</p>
+    </div>
+    <div class="renewal-offer">
+      <div class="offer-label">Pre-approved up to</div>
+      <div class="offer-amount">EGP 2,000,000</div>
+      <div class="offer-label">18 months tenor</div>
+    </div>
+    <button class="btn-renew" onclick="document.getElementById('screen3').scrollIntoView({behavior:'smooth'})">
+      Renew in 1 click
+    </button>
+  </div>
+
+  <!-- ========== SCREEN 2: SCORE + HISTORY ========== -->
+  <hr class="divider">
+  <div class="screen-label"><span>Screen 2 - Finzeed Score + Payment History</span></div>
+
+  <div class="score-section">
+    <div class="score-card">
+      <h3 style="margin-bottom:1rem">Your Finzeed Score</h3>
+      <div class="score-circle">
+        <div class="score-circle-inner">
+          <div class="score-number">82</div>
+          <div class="score-label">out of 100</div>
+        </div>
+      </div>
+      <div class="score-change">+17 points since first application</div>
+      <p style="font-size:0.82rem;color:var(--text-muted)">Higher score = better terms on renewal</p>
+    </div>
+
+    <div class="score-card" style="text-align:left">
+      <h4 style="margin-bottom:1rem">Score Breakdown</h4>
+      <div class="factor">
+        <span>Payment punctuality</span>
+        <span class="factor-good">Excellent (100%)</span>
+      </div>
+      <div class="factor">
+        <span>Bank statement consistency</span>
+        <span class="factor-good">Strong</span>
+      </div>
+      <div class="factor">
+        <span>Revenue trend</span>
+        <span class="factor-good">Growing +15%</span>
+      </div>
+      <div class="factor">
+        <span>Credit utilization</span>
+        <span class="factor-ok">75% (moderate)</span>
+      </div>
+      <div class="factor">
+        <span>Relationship length</span>
+        <span class="factor-good">5 months</span>
+      </div>
+      <div class="factor">
+        <span>Supplier diversity</span>
+        <span class="factor-ok">2 suppliers</span>
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-top:1rem;padding:0.8rem;background:#f8fbf9;border-radius:8px">
+        Tip: Pay the next 2 instalments on time to unlock the maximum EGP 2.5M limit.
+      </p>
+    </div>
+  </div>
+
+  <div class="history-card">
+    <h3>Payment History</h3>
+    <div class="payment-row" style="font-weight:600;color:var(--text-muted);font-size:0.78rem;text-transform:uppercase;letter-spacing:0.3px">
+      <span class="payment-date">Date</span>
+      <span class="payment-desc">Description</span>
+      <span class="payment-amount">Amount</span>
+      <span style="width:80px;text-align:center">Status</span>
+    </div>
+    <div class="payment-row">
+      <span class="payment-date">28 Mar 2026</span>
+      <span class="payment-desc">Monthly instalment #5 - Nile Steel Trading</span>
+      <span class="payment-amount">EGP 125,000</span>
+      <span class="payment-status-badge paid">Paid</span>
+    </div>
+    <div class="payment-row">
+      <span class="payment-date">28 Feb 2026</span>
+      <span class="payment-desc">Monthly instalment #4 - Nile Steel Trading</span>
+      <span class="payment-amount">EGP 125,000</span>
+      <span class="payment-status-badge paid">Paid</span>
+    </div>
+    <div class="payment-row">
+      <span class="payment-date">28 Jan 2026</span>
+      <span class="payment-desc">Monthly instalment #3 - GreenPack Packaging</span>
+      <span class="payment-amount">EGP 95,000</span>
+      <span class="payment-status-badge paid">Paid</span>
+    </div>
+    <div class="payment-row">
+      <span class="payment-date">28 Dec 2025</span>
+      <span class="payment-desc">Monthly instalment #2 - Nile Steel Trading</span>
+      <span class="payment-amount">EGP 125,000</span>
+      <span class="payment-status-badge paid">Paid</span>
+    </div>
+    <div class="payment-row">
+      <span class="payment-date">28 Apr 2026</span>
+      <span class="payment-desc">Monthly instalment #6 - upcoming</span>
+      <span class="payment-amount">EGP 125,000</span>
+      <span class="payment-status-badge upcoming">Upcoming</span>
+    </div>
+  </div>
+
+  <!-- ========== SCREEN 3: 1-CLICK RENEWAL FORM ========== -->
+  <hr class="divider" id="screen3">
+  <div class="screen-label"><span>Screen 3 - 1-Click Renewal Form</span></div>
+
+  <div class="renewal-form-card">
+    <h2>Renew Your Credit Line</h2>
+    <p>Since you're an existing customer, we only need your latest bank statement. Everything else is pre-filled.</p>
+
+    <!-- Pre-filled info (read-only) -->
+    <div class="prefilled-section">
+      <h4>Your information <span class="prefilled-badge">Pre-filled</span></h4>
+      <div class="prefilled-grid">
+        <div class="prefilled-item">
+          <label>Full name</label>
+          <span>Khaled Emad ElKaysouny</span>
+        </div>
+        <div class="prefilled-item">
+          <label>Email</label>
+          <span>Khaled.emad@finzeed.com</span>
+        </div>
+        <div class="prefilled-item">
+          <label>Company</label>
+          <span>Finzeed Technologies</span>
+        </div>
+        <div class="prefilled-item">
+          <label>Mobile</label>
+          <span>01001215112</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prefilled-section">
+      <h4>Documents on file <span class="prefilled-badge">Already verified</span></h4>
+      <div class="prefilled-grid">
+        <div class="prefilled-item">
+          <label>Commercial Registration</label>
+          <span style="color:var(--primary)">commercial_reg.pdf</span>
+        </div>
+        <div class="prefilled-item">
+          <label>Tax Card</label>
+          <span style="color:var(--primary)">tax_card.pdf</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credit Amount & Installments -->
+    <div class="prefilled-section" style="background:#fff;border:1.5px solid #e5ede8;">
+      <h4>Credit Details <span style="color:var(--primary);font-size:0.75rem;font-weight:600;margin-left:0.5rem">3.5% monthly rate</span></h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.2rem;">
+        <div>
+          <label style="display:block;font-size:0.78rem;color:var(--text-muted);margin-bottom:0.4rem;">Amount of Credit Needed (EGP)</label>
+          <input type="range" id="creditAmount" min="100000" max="2000000" step="50000" value="1500000"
+            style="width:100%;accent-color:var(--primary);cursor:pointer;" oninput="updateCalculation()">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.3rem;">
+            <span style="font-size:0.75rem;color:var(--text-muted)">EGP 100K</span>
+            <span id="creditAmountDisplay" style="font-size:1.3rem;font-weight:800;color:var(--primary)">EGP 1,500,000</span>
+            <span style="font-size:0.75rem;color:var(--text-muted)">EGP 2M</span>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:0.78rem;color:var(--text-muted);margin-bottom:0.4rem;">Number of Installments</label>
+          <div id="installmentOptions" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.3rem;">
+            <button class="installment-btn" data-months="1.5" onclick="selectInstallment(1.5)">45 days</button>
+            <button class="installment-btn" data-months="3" onclick="selectInstallment(3)">3 months</button>
+            <button class="installment-btn active" data-months="6" onclick="selectInstallment(6)">6 months</button>
+            <button class="installment-btn" data-months="9" onclick="selectInstallment(9)">9 months</button>
+            <button class="installment-btn" data-months="12" onclick="selectInstallment(12)">12 months</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Installment Calculator -->
+      <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;padding:1.2rem 1.5rem;border:1px solid #86efac;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;text-align:center;">
+          <div>
+            <div id="installmentLabel" style="font-size:0.75rem;color:#2d5a3a;">Monthly Installment</div>
+            <div id="monthlyInstallment" style="font-size:1.4rem;font-weight:800;color:var(--primary);">EGP 302,500</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:#2d5a3a;">Monthly Rate</div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--primary);">3.5%</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:#2d5a3a;">Total Repayment</div>
+            <div id="totalRepayment" style="font-size:1.4rem;font-weight:800;color:var(--primary);">EGP 1,815,000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Only thing they need to upload -->
+    <div class="upload-only-section">
+      <div class="upload-icon">&#x1F3E6;</div>
+      <h3>Upload latest bank statement</h3>
+      <p>Last 3-6 months to verify your current revenue.</p>
+      <div style="margin-top:1rem;font-size:0.82rem;color:var(--primary);font-weight:600">Click to browse or drag & drop PDF files</div>
+    </div>
+
+    <!-- Renewal summary -->
+    <div class="renewal-summary">
+      <h4>Your renewal summary</h4>
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+        <div class="summary-item">
+          <div class="summary-value" id="summaryAmount">EGP 1.5M</div>
+          <div class="summary-label">Credit Amount</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value" id="summaryTenor">6 months</div>
+          <div class="summary-label">Installments</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value">3.5%</div>
+          <div class="summary-label">Monthly Rate</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value">82</div>
+          <div class="summary-label">Finzeed Score</div>
+          <div class="improvement">+17 from first app</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-renew" style="width:100%;padding:1rem;font-size:1.05rem">
+      Submit renewal request
+    </button>
+    <p style="text-align:center;font-size:0.82rem;color:var(--text-muted);margin-top:0.8rem">
+      Your data is encrypted and processed securely. Approval takes under 5 minutes.
+    </p>
+  </div>
+</div>
+
+<script>
+  let selectedMonths = 6;
+  const MONTHLY_RATE = 0.035;
+
+  function selectInstallment(months) {
+    selectedMonths = months;
+    document.querySelectorAll('.installment-btn').forEach(btn => {
+      btn.classList.toggle('active', parseFloat(btn.dataset.months) === months);
+    });
+    updateCalculation();
+  }
+
+  function formatTenor(months) {
+    if (months === 1.5) return '45 days';
+    return months + ' months';
+  }
+
+  function updateCalculation() {
+    const amount = parseInt(document.getElementById('creditAmount').value);
+    const totalInterest = amount * MONTHLY_RATE * selectedMonths;
+    const totalRepayment = amount + totalInterest;
+    const installmentLabel = selectedMonths === 1.5 ? 'Total Due (45 days)' : 'Monthly Installment';
+    const monthly = selectedMonths === 1.5 ? totalRepayment : totalRepayment / selectedMonths;
+
+    document.getElementById('creditAmountDisplay').textContent = 'EGP ' + amount.toLocaleString();
+    document.getElementById('installmentLabel').textContent = installmentLabel;
+    document.getElementById('monthlyInstallment').textContent = 'EGP ' + Math.round(monthly).toLocaleString();
+    document.getElementById('totalRepayment').textContent = 'EGP ' + Math.round(totalRepayment).toLocaleString();
+
+    // Update summary
+    const amountM = amount >= 1000000 ? (amount / 1000000).toFixed(1).replace('.0','') + 'M' : (amount / 1000).toFixed(0) + 'K';
+    document.getElementById('summaryAmount').textContent = 'EGP ' + amountM;
+    document.getElementById('summaryTenor').textContent = formatTenor(selectedMonths);
+  }
+
+  updateCalculation();
+</script>
+</body>
+</html>

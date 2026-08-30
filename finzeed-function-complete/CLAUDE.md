@@ -81,3 +81,31 @@ The main handler dispatches based on content type:
 - CORS is handled manually in each response (no middleware)
 - Database connections use pyodbc with SQL Server
 - The chat system prompt contains Finzeed product details (credit limits EGP 250K-5M, tenor 6-18 months)
+
+## Scheduled Agents (claude.ai routines)
+
+Finzeed uses scheduled remote Claude Code agents for ongoing operational work. These run on Anthropic cloud, not on the local machine.
+
+### Existing routines
+
+1. **Finzeed Social Media Drafter** (`trig_01SDi2a3mHzuvdDh5HdPr3v4`)
+   - Schedule: Every Monday and Thursday at 9:00 AM Cairo (cron `0 6 * * 1,4` UTC)
+   - Output: 1 LinkedIn post (English) + 1 Facebook post (Arabic), saved as Gmail draft
+   - Recipients: `finzeed.eg@gmail.com`, `Ahmed.Adel@finzeed.com`, `Mohamed.adel@finzeed.com`
+   - Auto-send: Google Apps Script (`Finzeed Auto-Send` project under `finzeed.eg@gmail.com`) runs every 10 minutes, finds drafts with subject prefix "Finzeed Social Media Drafts", sends them automatically
+
+### Planned routines (TODO)
+
+1. **Marketing Insights Agent**
+   - Goal: Provide ongoing marketing insights, trend analysis, and campaign suggestions for Finzeed
+   - Skills required: strong marketing/copywriting, Egyptian SME market knowledge, social media strategy, competitor analysis, content planning
+   - Likely cadence: weekly digest
+   - Open questions: data sources to monitor (LinkedIn engagement, Facebook insights, competitor accounts, industry news), output format (email digest? GitHub issue? dashboard?)
+
+2. **Financial Analyst Agent**
+   - Goal: Track, record, and plan Finzeed's company financials (revenue, expenses, runway, projections)
+   - Skills required: financial modeling, P&L analysis, cash flow tracking, scenario planning
+   - Likely cadence: weekly or monthly
+   - Open questions: source of truth for financial data (Google Sheets? QuickBooks? bank feeds?), what artifacts to produce (forecasts, variance reports, KPI dashboard)
+
+When implementing either, follow the pattern of the existing Social Media Drafter routine: use the `/schedule` skill, attach Gmail MCP for delivery, and document the new `trigger_id` here.
