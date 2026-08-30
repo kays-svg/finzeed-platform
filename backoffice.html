@@ -1111,11 +1111,11 @@ async function viewApplication(id) {
     html += '</div>';
     html += '</div>';
 
-    // Claude AI Report
+    // Finzeed AI Report
     if (cr) {
       var recClass = cr.recommendation === 'APPROVE' ? 'rec-approve' : cr.recommendation === 'REJECT' ? 'rec-reject' : 'rec-review';
       html += '<div class="ai-report">';
-      html += '<h3>&#x1F916; Claude AI Credit Report</h3>';
+      html += '<h3>&#x1F916; Finzeed AI Systems Credit Report</h3>';
 
       html += '<div class="recommendation ' + recClass + '">';
       html += '<h2>Recommendation: ' + esc(cr.recommendation) + '</h2>';
@@ -1174,7 +1174,7 @@ async function viewApplication(id) {
       html += '</div>';
       html += '</div>';
     } else {
-      html += '<div class="ai-report"><h3>&#x1F916; Claude AI Credit Report</h3><div class="empty"><div class="icon">&#x1F50D;</div>No AI report available for this application</div></div>';
+      html += '<div class="ai-report"><h3>&#x1F916; Finzeed AI Systems Credit Report</h3><div class="empty"><div class="icon">&#x1F50D;</div>No AI report available for this application</div></div>';
     }
 
     // Previous decisions
@@ -1422,7 +1422,7 @@ async function handleBoUpload(e) {
       if (cr) {
         var recClass = cr.recommendation === 'APPROVE' ? 'rec-approve' : cr.recommendation === 'REJECT' ? 'rec-reject' : 'rec-review';
         html += '<div class="recommendation ' + recClass + '" style="text-align:center;padding:1.2rem;border-radius:8px;margin-bottom:1rem;">';
-        html += '<h2 style="margin-bottom:0.3rem;">Claude AI: ' + esc(cr.recommendation) + '</h2>';
+        html += '<h2 style="margin-bottom:0.3rem;">Finzeed AI Systems: ' + esc(cr.recommendation) + '</h2>';
         html += '<div style="font-size:2rem;font-weight:800;">' + cr.confidence_score + '%</div>';
         html += '<div>Confidence</div></div>';
 
@@ -1446,7 +1446,7 @@ async function handleBoUpload(e) {
           html += '</ul></div>';
         }
       } else {
-        html += '<div style="background:#fffbeb;padding:1rem;border-radius:8px;font-size:0.875rem;">Claude AI report not available. Check if ANTHROPIC_API_KEY is configured.</div>';
+        html += '<div style="background:#fffbeb;padding:1rem;border-radius:8px;font-size:0.875rem;">Finzeed AI Systems report not available. Check if AI service is configured.</div>';
       }
 
       // Bank analysis

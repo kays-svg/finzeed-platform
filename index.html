@@ -1422,6 +1422,21 @@
       color: #1d4ed8;
     }
 
+    .status-info-requested {
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+    }
+
+    .app-note {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      color: #78350f;
+      line-height: 1.5;
+    }
+
     .empty-state {
       text-align: center;
       padding: 3rem 1rem;
@@ -3204,6 +3219,7 @@
           if (statusText === 'Approved') { statusClass = 'status-approved'; }
           else if (statusText === 'Rejected') { statusClass = 'status-rejected'; }
           else if (statusText === 'Under Review') { statusClass = 'status-review'; }
+          else if (statusText === 'Info Requested') { statusClass = 'status-info-requested'; }
           else { statusClass = 'status-submitted'; }
 
           html += '<tr>' +
@@ -3213,6 +3229,12 @@
             '<td>' + (app.credit_limit ? 'EGP ' + Number(app.credit_limit).toLocaleString() : '-') + '</td>' +
             '<td>' + (app.tenor_months ? app.tenor_months + ' months' : '-') + '</td>' +
             '</tr>';
+
+          if (statusText === 'Info Requested' && app.notes) {
+            html += '<tr><td colspan="5" class="app-note">' +
+              '<strong>📋 Note from Finzeed:</strong> ' + escapeHtml(app.notes) +
+              '</td></tr>';
+          }
         });
 
         html += '</tbody></table>';
