@@ -4,7 +4,7 @@ import json
 import os
 import pyodbc
 from datetime import datetime, timedelta, timezone
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 import io
@@ -31,6 +31,12 @@ try:
 except ImportError:
     anthropic_sdk = None
 
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
+
+
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 # Initialize Azure clients
@@ -46,13 +52,41 @@ document_analysis_client = DocumentAnalysisClient(
     credential=AzureKeyCredential(doc_intel_key)
 ) if doc_intel_endpoint and doc_intel_key else None
 
+pyodbc.pooling = True  # Enable built-in ODBC connection pooling
+
 def get_db_connection():
-    """Get database connection"""
+    """Get database connection with ODBC pooling and retry for serverless DB auto-pause"""
+    import time
     connection_string = os.environ.get('SQL_CONNECTION_STRING')
     if not connection_string:
         raise Exception("SQL_CONNECTION_STRING not found in environment variables")
 
-    return pyodbc.connect(connection_string)
+    last_err = None
+    # 5 attempts with progressive backoff to handle SQL serverless cold-start (up to ~75s)
+    for attempt in range(5):
+        try:
+            return pyodbc.connect(connection_string, timeout=30)
+        except (pyodbc.OperationalError, pyodbc.Error) as e:
+            last_err = e
+            logging.warning(f"DB connection attempt {attempt+1}/5 failed: {e}")
+            if attempt < 4:
+                time.sleep(5 * (attempt + 1))  # 5, 10, 15, 20s
+    raise last_err
+
+
+# ========== DB KEEP-ALIVE TIMER ==========
+@app.timer_trigger(schedule="0 0 */6 * * *", arg_name="timer", run_on_startup=False)
+def db_keepalive(timer: func.TimerRequest) -> None:
+    """Ping the database every 6 hours as a health check (Basic tier is always-on)"""
+    try:
+        conn = pyodbc.connect(os.environ.get('SQL_CONNECTION_STRING', ''))
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        logging.info("DB keep-alive ping successful")
+    except Exception as e:
+        logging.warning(f"DB keep-alive ping failed: {e}")
 
 # ========== AUTH UTILITIES ==========
 
@@ -196,6 +230,77 @@ def send_verification_email(email, token, firstname):
 
 # ========== AUTH HANDLERS ==========
 
+def handle_send_marketing_drafts(req_body):
+    """Send marketing drafts via Gmail SMTP.
+
+    No auth required — but locked down by:
+    - Recipient is HARDCODED to GMAIL_SENDER_EMAIL (owner's inbox only)
+    - Subject is HARDCODED with prefix
+    - Sender is HARDCODED to GMAIL_SENDER_EMAIL
+    This endpoint can only deliver content to the owner — not arbitrary recipients.
+    """
+    body = req_body.get('body', '')
+    if not body:
+        return make_response({"error": "body required"}, 400)
+
+    sender_email = os.environ.get('GMAIL_SENDER_EMAIL', '')
+    app_password = os.environ.get('GMAIL_APP_PASSWORD', '')
+    if not sender_email or not app_password:
+        return make_response({"error": "Gmail credentials not configured"}, 500)
+
+    # Hardcoded recipient and subject prefix — protects against abuse
+    to_email = sender_email
+    custom_subject = req_body.get('subject_suffix', '')
+    subject = f"Finzeed Social Media Drafts — {custom_subject}" if custom_subject else "Finzeed Social Media Drafts"
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(sender_email, app_password.replace(' ', ''))
+            server.send_message(msg)
+
+        logging.info(f"Marketing drafts emailed to {to_email}")
+        return make_response({"success": True, "message": f"Email sent to {to_email}"})
+    except Exception as e:
+        logging.error(f"Email send error: {e}")
+        return make_response({"error": str(e)}, 500)
+
+
+def handle_admin_reset_password(req_body):
+    """Admin password reset - requires admin_key"""
+    admin_key = req_body.get('admin_key', '')
+    if admin_key != os.environ.get('JWT_SECRET', ''):
+        return make_response({"error": "Unauthorized"}, 403)
+    email = req_body.get('email', '').strip().lower()
+    new_password = req_body.get('new_password', '')
+    if not email or not new_password:
+        return make_response({"error": "Email and new_password required"}, 400)
+    try:
+        pw_hash, pw_salt = hash_password(new_password)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET password_hash = ?, password_salt = ? WHERE email = ?",
+                       (pw_hash, pw_salt, email))
+        if cursor.rowcount == 0:
+            conn.close()
+            return make_response({"error": "User not found"}, 404)
+        conn.commit()
+        conn.close()
+        return make_response({"success": True, "message": f"Password reset for {email}"})
+    except Exception as e:
+        logging.error(f"Password reset error: {e}")
+        return make_response({"error": str(e)}, 500)
+
 def handle_register(req_body):
     """Handle user registration with email verification"""
     email = req_body.get('email', '').strip().lower()
@@ -272,6 +377,9 @@ def handle_register(req_body):
             "message": "Account created!" if not email_sent else "Account created! Please check your email to verify your account before signing in."
         }, 201)
 
+    except pyodbc.OperationalError as e:
+        logging.error(f"Registration DB error: {str(e)}")
+        return make_response({"error": "Service temporarily unavailable. Please wait a moment and try again."}, 503)
     except Exception as e:
         logging.error(f"Registration error: {str(e)}")
         import traceback
@@ -466,7 +574,8 @@ def handle_profile(req, req_body):
                        COALESCE(a.application_status, 'submitted') as app_status,
                        ad.decision as final_decision,
                        ad.final_credit_limit, ad.final_tenor_months,
-                       a.customer_notified
+                       a.customer_notified,
+                       ad.internal_notes as decision_notes
                 FROM applications a
                 LEFT JOIN application_decisions ad ON a.id = ad.application_id
                 WHERE a.user_id = ?
@@ -476,14 +585,19 @@ def handle_profile(req, req_body):
                 app_status = app_row[3] or 'submitted'
                 final_decision = app_row[4]
                 notified = app_row[7]
+                decision_notes = app_row[8] or ''
 
                 # Customer sees friendly status
-                if final_decision == 'APPROVED' and notified:
+                if final_decision == 'APPROVED':
                     display_status = 'Approved'
                     display_credit = float(app_row[5]) if app_row[5] else 0
                     display_tenor = app_row[6] or 0
-                elif final_decision == 'REJECTED' and notified:
+                elif final_decision == 'REJECTED':
                     display_status = 'Rejected'
+                    display_credit = 0
+                    display_tenor = 0
+                elif final_decision == 'REQUEST_INFO':
+                    display_status = 'Info Requested'
                     display_credit = 0
                     display_tenor = 0
                 elif app_status in ('ai_reviewed', 'pending_review'):
@@ -501,7 +615,8 @@ def handle_profile(req, req_body):
                     "status": display_status,
                     "credit_limit": display_credit,
                     "tenor_months": display_tenor,
-                    "assessed_at": str(app_row[2]) if app_row[2] else ''
+                    "assessed_at": str(app_row[2]) if app_row[2] else '',
+                    "notes": decision_notes if final_decision == 'REQUEST_INFO' else ''
                 })
         except Exception as e:
             logging.warning(f"Could not fetch applications: {str(e)}")
@@ -702,12 +817,16 @@ def handle_seed_admin(req_body):
 
 def handle_backoffice_dashboard(req, req_body):
     """Get backoffice dashboard statistics"""
+    import time as _time
     payload = verify_backoffice_token(req)
     if not payload:
         return make_response({"error": "Unauthorized"}, 401)
 
     try:
+        t0 = _time.time()
         conn = get_db_connection()
+        t1 = _time.time()
+        logging.info(f"PERF: DB connection took {t1-t0:.3f}s")
         cursor = conn.cursor()
 
         stats = {}
@@ -761,6 +880,8 @@ def handle_backoffice_dashboard(req, req_body):
             })
         stats['recent_applications'] = recent
 
+        t2 = _time.time()
+        logging.info(f"PERF: Dashboard queries took {t2-t1:.3f}s, total {t2-t0:.3f}s")
         cursor.close()
         conn.close()
 
@@ -947,9 +1068,42 @@ def handle_backoffice_application_detail(req, req_body):
         """, (app_id,))
         documents = []
         for doc_row in cursor.fetchall():
+            raw_url = doc_row[3] or ''
+            download_url = raw_url
+            # Generate SAS token for secure download
+            if raw_url and 'blob.core.windows.net' in raw_url:
+                try:
+                    # Parse container and blob name from URL
+                    # URL format: https://account.blob.core.windows.net/container/blob_path
+                    url_parts = raw_url.split('.blob.core.windows.net/')
+                    if len(url_parts) == 2:
+                        path_part = url_parts[1]
+                        container_name = path_part.split('/')[0]
+                        blob_name = '/'.join(path_part.split('/')[1:])
+                        account_name = url_parts[0].split('//')[1]
+                        # Get account key from connection string
+                        conn_str = os.environ.get('AzureWebJobsStorage', '')
+                        account_key = None
+                        for part in conn_str.split(';'):
+                            if part.startswith('AccountKey='):
+                                account_key = part[len('AccountKey='):]
+                                break
+                        if account_key:
+                            sas_token = generate_blob_sas(
+                                account_name=account_name,
+                                container_name=container_name,
+                                blob_name=blob_name,
+                                account_key=account_key,
+                                permission=BlobSasPermissions(read=True),
+                                expiry=datetime.now(timezone.utc) + timedelta(hours=24)
+                            )
+                            download_url = f"{raw_url}?{sas_token}"
+                except Exception as sas_err:
+                    logging.warning(f"SAS generation failed for {raw_url}: {sas_err}")
+
             documents.append({
                 "id": doc_row[0], "type": doc_row[1] or '',
-                "filename": doc_row[2] or '', "blob_url": doc_row[3] or '',
+                "filename": doc_row[2] or '', "blob_url": download_url,
                 "file_size": doc_row[4] or 0
             })
 
@@ -1361,6 +1515,23 @@ def save_application_to_db(data, ai_assessment):
         claude_report = ai_assessment.get('claude_report')
         app_status = 'ai_reviewed' if claude_report else 'submitted'
 
+        # Helper to convert empty strings to None for numeric fields
+        def to_num(val):
+            if val is None or val == '':
+                return None
+            try:
+                return float(str(val).replace(',', ''))
+            except (ValueError, TypeError):
+                return None
+
+        def to_int(val):
+            if val is None or val == '':
+                return None
+            try:
+                return int(float(str(val).replace(',', '')))
+            except (ValueError, TypeError):
+                return None
+
         # 2. Insert application
         cursor.execute("""
             INSERT INTO applications (
@@ -1374,39 +1545,76 @@ def save_application_to_db(data, ai_assessment):
         """, (
             user_id, data['company'], data['firstname'], data['lastname'],
             data['email'], data['mobile'], data.get('industry'),
-            data.get('revenue'), data.get('purpose'),
+            to_num(data.get('revenue')), data.get('purpose'),
             'ai_assessment', app_status,
             ai_assessment.get('decision'),
-            ai_assessment.get('credit_limit'),
-            ai_assessment.get('tenor_months'),
-            ai_assessment.get('interest_rate'),
-            ai_assessment.get('confidence_score'),
+            to_num(ai_assessment.get('credit_limit')),
+            to_int(ai_assessment.get('tenor_months')),
+            to_num(ai_assessment.get('interest_rate')),
+            to_num(ai_assessment.get('confidence_score')),
             json.dumps(ai_assessment.get('risk_factors', [])),
             json.dumps(ai_assessment.get('recommendations', [])),
-            data.get('requested_amount'),
-            data.get('requested_installments'),
-            data.get('years_in_business'),
-            data.get('business_description'),
-            data.get('declared_monthly_inflows')
+            to_num(data.get('requested_amount')),
+            to_int(data.get('requested_installments')),
+            to_int(data.get('years_in_business')),
+            data.get('business_description') or None,
+            to_num(data.get('declared_monthly_inflows'))
         ))
         
         # Get application_id
         cursor.execute("SELECT @@IDENTITY")
         application_id = cursor.fetchone()[0]
         
-        # 3. Insert documents if provided
+        # 3. Upload documents to blob storage and save references
         documents = data.get('documents', {})
-        for doc_type, doc_info in documents.items():
-            if doc_info and isinstance(doc_info, dict) and 'blob_url' in doc_info:
+        container_name = 'application-documents'
+        try:
+            blob_service_client.create_container(container_name)
+        except Exception:
+            pass  # Container likely already exists
+
+        for doc_type, doc_list in documents.items():
+            if not doc_list:
+                continue
+            # Handle both list and dict formats
+            if isinstance(doc_list, dict):
+                doc_list = [doc_list]
+            if not isinstance(doc_list, list):
+                continue
+
+            for doc_info in doc_list:
+                if not isinstance(doc_info, dict):
+                    continue
+                filename = doc_info.get('filename', '')
+                if not filename:
+                    continue
+
+                # Upload to blob storage if content is available
+                blob_url = doc_info.get('blob_url', '')
+                file_size = doc_info.get('size', doc_info.get('file_size', 0))
+
+                if not blob_url and doc_info.get('content'):
+                    try:
+                        blob_name = f"{application_id}/{doc_type}/{filename}"
+                        blob_client = blob_service_client.get_blob_client(container_name, blob_name)
+                        file_bytes = base64.b64decode(doc_info['content'])
+                        blob_client.upload_blob(file_bytes, overwrite=True)
+                        blob_url = blob_client.url
+                        file_size = len(file_bytes)
+                        logging.info(f"Uploaded {doc_type}/{filename} to blob storage")
+                    except Exception as blob_err:
+                        logging.warning(f"Blob upload failed for {filename}: {blob_err}")
+                        blob_url = f"upload-pending://{doc_type}/{filename}"
+
                 cursor.execute("""
                     INSERT INTO documents (application_id, document_type, filename, blob_url, file_size)
                     VALUES (?, ?, ?, ?, ?)
                 """, (
                     application_id,
                     doc_type,
-                    doc_info.get('filename', ''),
-                    doc_info.get('blob_url', ''),
-                    doc_info.get('file_size', 0)
+                    filename,
+                    blob_url,
+                    file_size
                 ))
         
         conn.commit()
@@ -1467,6 +1675,12 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
             
             # Check for auth actions
             action = req_body.get('action')
+            if action == 'ping':
+                return make_response({"ok": True})
+            if action == 'admin_reset_password':
+                return handle_admin_reset_password(req_body)
+            if action == 'send_marketing_drafts':
+                return handle_send_marketing_drafts(req_body)
             if action == 'register':
                 return handle_register(req_body)
             if action == 'login':
@@ -1617,14 +1831,18 @@ def handle_form_data_request(req):
 
         # Save to database
         db_result = save_application_to_db(data, ai_assessment)
+        logging.info(f"DB save result: {db_result}")
 
         # Save Claude credit report if available
         application_id = db_result.get('application_id')
         claude_report = ai_assessment.get('claude_report')
         if claude_report and application_id:
-            save_credit_report(application_id, claude_report)
-            log_audit(None, 'system', 'ai_analysis_complete', 'application', application_id,
-                      json.dumps({"recommendation": claude_report.get('recommendation')}))
+            try:
+                save_credit_report(application_id, claude_report)
+                log_audit(None, 'system', 'ai_analysis_complete', 'application', application_id,
+                          json.dumps({"recommendation": claude_report.get('recommendation')}))
+            except Exception as report_err:
+                logging.error(f"Failed to save credit report: {report_err}")
 
         # NEW FLOW: Customer sees "Application Submitted" — NOT the AI decision
         # The AI decision is stored internally for the backoffice team
@@ -1823,45 +2041,48 @@ def analyze_with_openai(text_content, filename):
         logging.error("❌ Azure OpenAI credentials not configured")
         return None
     
-    # Prepare the prompt
-    prompt = f"""You are a financial analyst specialized in analyzing bank statements for Egyptian SMEs.
+    # Use full text — large bank statements can be 50K+ chars
+    # GPT-4 supports 128K tokens, so we can send much more text
+    max_text = 100000  # ~25K tokens, well within GPT-4 limits
+    text_to_analyze = text_content[:max_text]
+    text_truncated = len(text_content) > max_text
+    truncation_note = f"\n\nNOTE: This text was truncated from {len(text_content)} to {max_text} characters. Extrapolate if needed." if text_truncated else ""
 
-TASK: Analyze this bank statement and extract ONLY the following information.
+    logging.info(f"Sending {len(text_to_analyze)} chars to OpenAI (full text: {len(text_content)} chars)")
+
+    # Prepare the prompt
+    prompt = f"""You are a financial analyst specialized in analyzing Egyptian bank statements.
+
+TASK: Analyze this bank statement and extract ONLY credit (inflow) transactions.
 
 BANK STATEMENT TEXT:
-{text_content[:15000]}
+{text_to_analyze}
+{truncation_note}
 
-INSTRUCTIONS:
-1. Extract TOTAL INFLOWS (money coming INTO the account):
-   - Include: deposits, incoming transfers, customer payments, sales revenue, wire transfers IN, "IPN Inward", "Cash Deposit", "Account Transfer Collection"
-   - Exclude: withdrawals, ATM, outgoing transfers, fees, purchases, money going OUT, "Outward", "POS Purchase"
-   
-2. Count the NUMBER of inflow transactions
+CRITICAL RULES FOR ACCURACY:
+1. Bank statements typically have columns: Date | Description | Debit (outflow) | Credit (inflow) | Balance
+2. ONLY sum amounts from the CREDIT column (money IN). The credit column is often labeled "Credit", "إيداع", "دائن", or "CR"
+3. The DEBIT column (money OUT) is labeled "Debit", "سحب", "مدين", or "DR" — DO NOT include these amounts
+4. The BALANCE column shows running account balance — DO NOT include balance amounts as inflows
+5. DO NOT double-count: if a transaction appears in a monthly summary AND in transaction details, count it only ONCE
+6. DO NOT confuse the running balance with transaction amounts — balances are typically much larger numbers
+7. If the statement shows "Total Credits" or "إجمالي الإيداعات" for each month, use those totals instead of summing individual transactions (more accurate)
 
-3. Determine the TIME PERIOD covered (how many months of data)
+WHAT TO EXTRACT:
+- total_inflows: Sum of ALL credit/deposit transactions across ALL months (NOT the balance, NOT debits)
+- transaction_count: Number of individual credit transactions
+- months: Number of distinct calendar months in the statement
 
-IMPORTANT RULES:
-- Only count INFLOWS (credits/deposits/incoming money)
-- Skip OUTFLOWS (debits/withdrawals/outgoing money)  
-- Ignore account balances (we only want transaction amounts)
-- The statement may be in Arabic or English or mixed - handle both
-- Look for transaction patterns and sum ALL inflow amounts
+COMMON INFLOW TYPES: deposits, incoming transfers, customer payments, wire transfers IN, "IPN Inward", "Cash Deposit", credit entries
+EXCLUDE: withdrawals, ATM, outgoing transfers, fees, purchases, POS, debit entries, balances
 
-Return ONLY a valid JSON object with this exact structure (no markdown, no explanation, no code blocks):
+Return ONLY valid JSON (no markdown, no explanation):
 {{
-    "total_inflows": <total number in EGP>,
-    "transaction_count": <number of inflow transactions>,
+    "total_inflows": <sum of credit transactions in EGP>,
+    "transaction_count": <number of credit transactions>,
     "months": <number of months covered>,
-    "currency": "EGP"
-}}
-
-If you cannot determine the information, return:
-{{
-    "total_inflows": 0,
-    "transaction_count": 0,
-    "months": 0,
     "currency": "EGP",
-    "error": "Could not extract transaction data"
+    "period": "<start month/year> to <end month/year>"
 }}"""
 
     # Build API URL
@@ -1884,7 +2105,7 @@ If you cannot determine the information, return:
                 "content": prompt
             }
         ],
-        "max_tokens": 500,
+        "max_tokens": 1000,
         "temperature": 0.1  # Low temperature for consistent, factual extraction
     }
     
@@ -1892,7 +2113,7 @@ If you cannot determine the information, return:
         logging.info(f"🤖 Calling Azure OpenAI ({deployment})...")
         
         # Make request
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
         
         if response.status_code != 200:
             logging.error(f"❌ OpenAI API error: {response.status_code}")
@@ -1963,65 +2184,256 @@ If you cannot determine the information, return:
         return None
 
 
+def pdf_to_images(file_content, page_start=0, page_end=None, dpi=120):
+    """Convert PDF pages to base64 PNG images using PyMuPDF.
+    Pages are 0-indexed. page_end is exclusive. None means all pages.
+    """
+    if not fitz:
+        return []
+    images = []
+    try:
+        pdf_doc = fitz.open(stream=file_content, filetype="pdf")
+        total = len(pdf_doc)
+        end = total if page_end is None else min(page_end, total)
+        start = max(0, page_start)
+        for page_num in range(start, end):
+            page = pdf_doc[page_num]
+            mat = fitz.Matrix(dpi / 72, dpi / 72)
+            pix = page.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes("png")
+            img_b64 = base64.b64encode(img_bytes).decode('utf-8')
+            images.append(img_b64)
+        pdf_doc.close()
+        logging.info(f"Converted pages {start+1}-{end} ({len(images)} images) at {dpi} DPI")
+        return images
+    except Exception as e:
+        logging.error(f"PDF to image conversion failed: {e}")
+        return []
+
+
+def _clean_ai_json(ai_response):
+    """Clean common JSON parsing issues from AI responses"""
+    # Strip markdown
+    if "```json" in ai_response:
+        ai_response = ai_response.split("```json")[1].split("```")[0].strip()
+    elif "```" in ai_response:
+        ai_response = ai_response.split("```")[1].split("```")[0].strip()
+    # Strip Python-style underscores in numbers (e.g., 1_234_567.89 → 1234567.89)
+    ai_response = re.sub(r'(\d)_(\d)', r'\1\2', ai_response)
+    ai_response = re.sub(r'(\d)_(\d)', r'\1\2', ai_response)  # Run twice for chained underscores
+    ai_response = re.sub(r'(\d)_(\d)', r'\1\2', ai_response)
+    # Strip thousands commas in numbers (e.g., 1,234,567.89 → 1234567.89)
+    ai_response = re.sub(r':\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?)',
+        lambda m: ': ' + m.group(1).replace(',', ''), ai_response)
+    return ai_response
+
+
+def analyze_with_azure_vision(file_content, filename, prompt_text, model_deployment=None,
+                              max_tokens=1500, page_start=0, page_end=None, dpi=120):
+    """Send PDF page range (as images) to Azure OpenAI GPT-4.1 vision for analysis"""
+    api_key = os.environ.get('AZURE_OPENAI_KEY')
+    endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+    deployment = model_deployment or os.environ.get('AZURE_OPENAI_VISION_DEPLOYMENT', 'gpt-4.1-poc')
+    if not api_key or not endpoint:
+        logging.warning("Azure OpenAI not configured for vision analysis")
+        return None
+
+    images = pdf_to_images(file_content, page_start=page_start, page_end=page_end, dpi=dpi)
+    if not images:
+        logging.warning(f"No images extracted from {filename}")
+        return None
+
+    content = [{"type": "text", "text": prompt_text}]
+    for img_b64 in images:
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/png;base64,{img_b64}"}
+        })
+
+    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-08-01-preview"
+    headers = {"Content-Type": "application/json", "api-key": api_key}
+    payload = {
+        "messages": [
+            {"role": "system", "content": "You are a precise financial analyst. Return ONLY valid JSON."},
+            {"role": "user", "content": content}
+        ],
+        "max_tokens": max_tokens,
+        "temperature": 0.1
+    }
+
+    try:
+        logging.info(f"Calling Azure GPT-4.1 vision with {len(images)} images for {filename}")
+        response = requests.post(url, headers=headers, json=payload, timeout=180)
+        if response.status_code != 200:
+            logging.error(f"Azure vision error: {response.status_code} - {response.text[:300]}")
+            return None
+        ai_response = response.json()['choices'][0]['message']['content'].strip()
+        logging.info(f"Vision response (first 200): {ai_response[:200]}")
+        ai_response = _clean_ai_json(ai_response)
+        return json.loads(ai_response)
+    except Exception as e:
+        logging.error(f"Azure vision analysis error: {e}")
+        import traceback
+        logging.error(traceback.format_exc())
+        return None
+
+
+def analyze_pdf_chunked(file_content, filename, prompt_text, max_tokens=1500, chunk_size=30, dpi=110):
+    """Process a multi-page PDF in chunks via vision, dedup by month.
+    Aggregates per-month breakdowns across chunks; if same month appears in
+    multiple chunks, uses the maximum value (most complete view).
+    """
+    if not fitz:
+        return analyze_with_azure_vision(file_content, filename, prompt_text, max_tokens=max_tokens)
+
+    try:
+        pdf_doc = fitz.open(stream=file_content, filetype="pdf")
+        total_pages = len(pdf_doc)
+        pdf_doc.close()
+    except Exception as e:
+        logging.error(f"Cannot read PDF for chunking: {e}")
+        return None
+
+    # Most bank statements fit in one chunk
+    if total_pages <= chunk_size:
+        logging.info(f"PDF has {total_pages} pages — processing in single call")
+        return analyze_with_azure_vision(file_content, filename, prompt_text, max_tokens=max_tokens, dpi=dpi)
+
+    logging.info(f"PDF has {total_pages} pages — processing in chunks of {chunk_size}")
+
+    # Per-month dedup: key=month string (e.g., "2025-03"), value=best chunk values
+    month_data = {}
+    chunk_count = 0
+
+    for chunk_start in range(0, total_pages, chunk_size):
+        chunk_end = min(chunk_start + chunk_size, total_pages)
+        logging.info(f"Processing chunk: pages {chunk_start+1}-{chunk_end}")
+        chunk_result = analyze_with_azure_vision(
+            file_content, filename, prompt_text,
+            max_tokens=max_tokens, page_start=chunk_start, page_end=chunk_end, dpi=dpi
+        )
+        if not chunk_result:
+            logging.warning(f"Chunk {chunk_start+1}-{chunk_end} returned nothing")
+            continue
+        chunk_count += 1
+
+        # Use per-month breakdown if available
+        per_month = chunk_result.get('per_month', [])
+        if per_month and isinstance(per_month, list):
+            for m in per_month:
+                month_key = m.get('month', '')
+                if not month_key:
+                    continue
+                inflows = float(m.get('inflows', 0) or 0)
+                tx_count = int(m.get('transaction_count', 0) or 0)
+                # Take the higher value if same month appears in multiple chunks
+                existing = month_data.get(month_key, {'inflows': 0, 'tx': 0})
+                if inflows > existing['inflows']:
+                    month_data[month_key] = {'inflows': inflows, 'tx': max(tx_count, existing['tx'])}
+                logging.info(f"  Chunk {chunk_count} reported month {month_key}: {inflows:,.2f} EGP, {tx_count} tx")
+        else:
+            # Fallback: no per-month data, just aggregate totals (less accurate)
+            logging.warning(f"Chunk {chunk_count} did not return per_month breakdown — using totals")
+            fallback_key = f"chunk_{chunk_count}"
+            month_data[fallback_key] = {
+                'inflows': float(chunk_result.get('total_inflows', 0) or 0),
+                'tx': int(chunk_result.get('transaction_count', 0) or 0)
+            }
+
+    if chunk_count == 0 or not month_data:
+        return None
+
+    # Aggregate deduped per-month data
+    total_inflows = sum(m['inflows'] for m in month_data.values())
+    total_tx = sum(m['tx'] for m in month_data.values())
+    months = len(month_data)
+
+    logging.info(f"Aggregated {chunk_count} chunks → {months} unique months, "
+                 f"{total_inflows:,.2f} EGP inflows, {total_tx} transactions")
+    for k, v in sorted(month_data.items()):
+        logging.info(f"  {k}: {v['inflows']:,.2f} EGP ({v['tx']} tx)")
+
+    return {
+        'total_inflows': total_inflows,
+        'transaction_count': total_tx,
+        'months': months,
+        'currency': 'EGP',
+        'period': ', '.join(sorted(month_data.keys())),
+        '_chunks': chunk_count,
+        'per_month': [{'month': k, 'inflows': v['inflows'], 'transaction_count': v['tx']}
+                      for k, v in sorted(month_data.items())]
+    }
+
+
 def analyze_bank_statements(documents):
-    """AI-powered bank statement analyzer - works with ANY bank automatically"""
-    
+    """AI-powered bank statement analyzer using Azure GPT-4.1 Vision for direct PDF analysis"""
+
     logging.info("="*80)
-    logging.info("🤖 AI-POWERED BANK STATEMENT ANALYSIS")
+    logging.info("🤖 AI-POWERED BANK STATEMENT ANALYSIS (Azure Vision)")
     logging.info("="*80)
-    
+
     # Check if we have bank statements
     bank_statements = documents.get('bank_statements', [])
     if not bank_statements or not isinstance(bank_statements, list):
         logging.info("No bank statements provided for analysis")
         return None
-    
-    if not document_analysis_client:
-        logging.warning("Document Intelligence not configured")
-        return None
-    
+
+    if not fitz:
+        logging.warning("PyMuPDF not available — falling back to legacy extraction")
+        return analyze_bank_statements_legacy(documents)
+
+    bank_prompt = """Analyze this Egyptian bank statement. Look at EVERY page carefully.
+
+For EACH calendar month present, identify the total CREDIT (inflow) amount. The credit column shows money INTO the account (deposits, transfers received, customer payments). Do NOT count debits, withdrawals, or balance amounts.
+
+If the statement has monthly summary rows (e.g., "Total Credits for March: X EGP"), prefer those over summing individual lines. Otherwise sum all credit-column transactions for the month.
+
+Return ONLY this JSON structure (no markdown, no commentary):
+{
+    "per_month": [
+        {"month": "YYYY-MM", "inflows": <number_no_commas>, "transaction_count": <int>}
+    ],
+    "total_inflows": <sum>,
+    "transaction_count": <total>,
+    "months": <count of months>,
+    "period": "<earliest YYYY-MM> to <latest YYYY-MM>"
+}
+
+CRITICAL: List ALL months you see in per_month. If the statement spans Jan-Dec, return 12 entries. Be exhaustive."""
+
     try:
         total_inflows = 0
         transactions_found = 0
         months_analyzed = 0
-        
+
         for idx, statement in enumerate(bank_statements, 1):
             try:
-                # Decode base64 content
                 file_content = base64.b64decode(statement.get('content', ''))
                 filename = statement.get('filename', f'statement_{idx}.pdf')
-                
-                logging.info(f"\n--- 🤖 AI Analyzing Bank Statement {idx}: {filename} ---")
+
+                logging.info(f"\n--- 🤖 Vision Analyzing Bank Statement {idx}: {filename} ---")
                 logging.info(f"File size: {len(file_content)} bytes")
-                
-                # Extract text with Document Intelligence
-                file_stream = io.BytesIO(file_content)
-                poller = document_analysis_client.begin_analyze_document(
-                    "prebuilt-read",  # Best for full text extraction
-                    document=file_stream
-                )
-                
-                logging.info("⏳ Extracting text from PDF...")
-                result = poller.result()
-                logging.info("✅ Text extraction complete!")
-                
-                if not result.content:
-                    logging.warning("⚠️ No text extracted from document")
-                    continue
-                
-                text_length = len(result.content)
-                logging.info(f"📝 Extracted {text_length} characters")
-                
-                # Send to OpenAI for intelligent analysis
-                logging.info("🤖 Sending to AI for analysis...")
-                ai_result = analyze_with_openai(result.content, filename)
+
+                # Check page count
+                try:
+                    pdf_doc = fitz.open(stream=file_content, filetype="pdf")
+                    logging.info(f"📄 PDF has {len(pdf_doc)} pages")
+                    pdf_doc.close()
+                except Exception:
+                    pass
+
+                logging.info("🤖 Sending PDF pages as images to Azure GPT-4.1 Vision...")
+                ai_result = analyze_pdf_chunked(file_content, filename, bank_prompt, max_tokens=3000, chunk_size=10, dpi=120)
                 
                 if ai_result:
-                    total_inflows += ai_result['total_inflows']
-                    transactions_found += ai_result['transaction_count']
-                    months_analyzed += ai_result['months']
-                    
-                    logging.info(f"✅ AI found {ai_result['transaction_count']} transactions = {ai_result['total_inflows']:,.2f} EGP")
+                    inflows = float(ai_result.get('total_inflows', 0) or 0)
+                    tx_count = int(ai_result.get('transaction_count', 0) or 0)
+                    months = int(ai_result.get('months', 0) or 0)
+                    total_inflows += inflows
+                    transactions_found += tx_count
+                    months_analyzed += months
+
+                    logging.info(f"✅ AI found {tx_count} transactions = {inflows:,.2f} EGP across {months} months")
                 else:
                     logging.warning(f"⚠️ AI analysis failed for statement {idx}")
                 
@@ -2063,6 +2475,306 @@ def analyze_bank_statements(documents):
         logging.error(traceback.format_exc())
         return None
 
+
+def analyze_bank_statements_legacy(documents):
+    """Legacy bank statement analyzer using PyMuPDF/DI + OpenAI (fallback if Gemini unavailable)"""
+    bank_statements = documents.get('bank_statements', [])
+    if not bank_statements or not isinstance(bank_statements, list):
+        return None
+
+    try:
+        total_inflows = 0
+        transactions_found = 0
+        months_analyzed = 0
+
+        for idx, statement in enumerate(bank_statements, 1):
+            try:
+                file_content = base64.b64decode(statement.get('content', ''))
+                filename = statement.get('filename', f'statement_{idx}.pdf')
+                logging.info(f"Legacy analysis: {filename} ({len(file_content)} bytes)")
+
+                # Try PyMuPDF first
+                text_content = None
+                if fitz:
+                    try:
+                        pdf_doc = fitz.open(stream=file_content, filetype="pdf")
+                        page_texts = []
+                        for page_num in range(len(pdf_doc)):
+                            pg_text = pdf_doc[page_num].get_text()
+                            if pg_text and pg_text.strip():
+                                page_texts.append(pg_text.strip())
+                        pdf_doc.close()
+                        if page_texts:
+                            text_content = "\n\n".join(page_texts)
+                    except Exception as e:
+                        logging.warning(f"PyMuPDF failed: {e}")
+
+                # Fallback to Document Intelligence
+                if not text_content and document_analysis_client:
+                    file_stream = io.BytesIO(file_content)
+                    poller = document_analysis_client.begin_analyze_document(
+                        "prebuilt-layout", document=file_stream, pages="1-100"
+                    )
+                    result = poller.result()
+                    text_content = result.content
+
+                if not text_content:
+                    continue
+
+                ai_result = analyze_with_openai(text_content, filename)
+                if ai_result:
+                    total_inflows += ai_result['total_inflows']
+                    transactions_found += ai_result['transaction_count']
+                    months_analyzed += ai_result['months']
+            except Exception as e:
+                logging.error(f"Legacy analysis error for statement {idx}: {e}")
+                continue
+
+        if months_analyzed == 0 or total_inflows == 0:
+            return None
+
+        monthly_average = total_inflows / months_analyzed
+        return {
+            'total_inflows': total_inflows,
+            'monthly_average': monthly_average,
+            'annual_estimate': monthly_average * 12,
+            'transactions_found': transactions_found,
+            'months_analyzed': months_analyzed
+        }
+    except Exception as e:
+        logging.error(f"Legacy bank statement analysis error: {e}")
+        return None
+
+
+def extract_document_text(documents, doc_type):
+    """Extract text from a document using Azure Document Intelligence"""
+    doc_list = documents.get(doc_type, [])
+    if not doc_list or not isinstance(doc_list, list) or not document_analysis_client:
+        return None
+
+    all_text = []
+    for idx, doc in enumerate(doc_list, 1):
+        try:
+            file_content = base64.b64decode(doc.get('content', ''))
+            filename = doc.get('filename', f'{doc_type}_{idx}.pdf')
+            logging.info(f"Extracting text from {doc_type}: {filename} ({len(file_content)} bytes)")
+
+            file_stream = io.BytesIO(file_content)
+            poller = document_analysis_client.begin_analyze_document(
+                "prebuilt-layout", document=file_stream, pages="1-100"
+            )
+            result = poller.result()
+            page_count = len(result.pages) if result.pages else 0
+
+            # Build text page-by-page for reliability
+            page_texts = []
+            for pg in (result.pages or []):
+                pg_lines = [line.content for line in (pg.lines or [])]
+                if pg_lines:
+                    page_texts.append("\n".join(pg_lines))
+
+            extracted = "\n\n".join(page_texts) if page_texts else result.content
+            if extracted:
+                all_text.append(extracted)
+                logging.info(f"Extracted {len(extracted)} chars from {page_count} pages of {filename}")
+            else:
+                logging.warning(f"No text extracted from {filename}")
+        except Exception as e:
+            logging.error(f"Error extracting {doc_type} {idx}: {str(e)}")
+            continue
+
+    return "\n\n".join(all_text) if all_text else None
+
+
+def analyze_balance_sheet(documents):
+    """Analyze balance sheet using Azure GPT-4.1 Vision (direct PDF) or fallback to DI + OpenAI"""
+    doc_list = documents.get('balance_sheet', [])
+    if not doc_list or not isinstance(doc_list, list):
+        return None
+
+    prompt_text = """You are a financial analyst specialized in analyzing balance sheets for Egyptian SMEs.
+
+TASK: Analyze this balance sheet and extract key financial metrics.
+
+INSTRUCTIONS:
+Extract the following:
+1. Total Assets and breakdown (current assets, fixed assets)
+2. Total Liabilities and breakdown (current, long-term)
+3. Owner's Equity / Shareholders' Equity
+4. Key ratios: Current Ratio, Debt-to-Equity, Working Capital
+5. Net Income / Profit if available
+6. Cash, accounts receivable, accounts payable
+7. Reporting period/date
+
+The document may be in Arabic or English — handle both.
+
+Return ONLY valid JSON (no markdown, no code blocks):
+{
+    "total_assets": <number or null>,
+    "current_assets": <number or null>,
+    "fixed_assets": <number or null>,
+    "total_liabilities": <number or null>,
+    "current_liabilities": <number or null>,
+    "long_term_liabilities": <number or null>,
+    "equity": <number or null>,
+    "net_income": <number or null>,
+    "cash_and_equivalents": <number or null>,
+    "accounts_receivable": <number or null>,
+    "accounts_payable": <number or null>,
+    "current_ratio": <number or null>,
+    "debt_to_equity": <number or null>,
+    "working_capital": <number or null>,
+    "reporting_period": "<date or period string>",
+    "currency": "EGP",
+    "health_assessment": "strong" or "moderate" or "weak" or "critical",
+    "key_observations": [<list of observation strings>]
+}"""
+
+    # Try Azure GPT-4.1 Vision first (direct PDF analysis)
+    if fitz:
+        try:
+            file_content = base64.b64decode(doc_list[0].get('content', ''))
+            filename = doc_list[0].get('filename', 'balance_sheet.pdf')
+            logging.info(f"Analyzing balance sheet with Azure Vision ({len(file_content)} bytes)")
+            result = analyze_with_azure_vision(file_content, filename, prompt_text, max_tokens=1500)
+            if result:
+                logging.info(f"Balance sheet analysis complete (Vision): health={result.get('health_assessment')}")
+                return result
+        except Exception as e:
+            logging.error(f"Vision balance sheet error: {e}")
+
+    # Fallback to DI + OpenAI
+    text = extract_document_text(documents, 'balance_sheet')
+    if not text:
+        return None
+    api_key = os.environ.get('AZURE_OPENAI_KEY')
+    endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+    deployment = os.environ.get('AZURE_OPENAI_DEPLOYMENT', 'finzeed-chat')
+    if not api_key or not endpoint:
+        return None
+    full_prompt = f"{prompt_text}\n\nBALANCE SHEET TEXT:\n{text[:100000]}"
+    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-08-01-preview"
+    headers = {"Content-Type": "application/json", "api-key": api_key}
+    payload = {
+        "messages": [
+            {"role": "system", "content": "You are a precise financial analyst. Return ONLY valid JSON."},
+            {"role": "user", "content": full_prompt}
+        ],
+        "max_tokens": 1500, "temperature": 0.1
+    }
+    try:
+        logging.info("Calling OpenAI for balance sheet analysis (fallback)...")
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        if response.status_code != 200:
+            return None
+        ai_response = response.json()['choices'][0]['message']['content'].strip()
+        if "```json" in ai_response:
+            ai_response = ai_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in ai_response:
+            ai_response = ai_response.split("```")[1].split("```")[0].strip()
+        ai_response = re.sub(r':\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?)',
+            lambda m: ': ' + m.group(1).replace(',', ''), ai_response)
+        result = json.loads(ai_response)
+        logging.info(f"Balance sheet analysis complete (OpenAI): health={result.get('health_assessment')}")
+        return result
+    except Exception as e:
+        logging.error(f"Balance sheet analysis error: {e}")
+        return None
+
+
+def analyze_iscore(documents):
+    """Analyze i-Score credit report using Azure GPT-4.1 Vision or fallback to DI + OpenAI"""
+    doc_list = documents.get('iscore', [])
+    if not doc_list or not isinstance(doc_list, list):
+        return None
+
+    prompt_text = """You are a credit analyst specialized in analyzing Egyptian i-Score credit reports.
+
+TASK: Analyze this i-Score credit report and extract key credit information.
+
+INSTRUCTIONS:
+Extract the following:
+1. Credit score / rating (i-Score range: 400-850)
+2. Number of active credit facilities
+3. Total outstanding debt
+4. Payment history (on-time vs late)
+5. Credit inquiries, defaults, bounced checks, legal cases
+6. Credit utilization
+7. Account dates
+
+The document may be in Arabic or English — handle both.
+
+Return ONLY valid JSON (no markdown, no code blocks):
+{
+    "credit_score": <number or null>,
+    "score_rating": "excellent" or "good" or "fair" or "poor" or "unknown",
+    "active_facilities": <number or null>,
+    "total_outstanding_debt": <number or null>,
+    "total_credit_limit": <number or null>,
+    "credit_utilization_pct": <number or null>,
+    "on_time_payments": <number or null>,
+    "late_payments": <number or null>,
+    "defaults": <number or null>,
+    "bounced_checks": <number or null>,
+    "legal_cases": <number or null>,
+    "credit_inquiries_last_12m": <number or null>,
+    "oldest_account": "<date or null>",
+    "newest_account": "<date or null>",
+    "currency": "EGP",
+    "risk_level": "low" or "medium" or "high" or "very_high",
+    "key_observations": [<list of observation strings>]
+}"""
+
+    # Try Azure GPT-4.1 Vision first
+    if fitz:
+        try:
+            file_content = base64.b64decode(doc_list[0].get('content', ''))
+            filename = doc_list[0].get('filename', 'iscore.pdf')
+            logging.info(f"Analyzing i-Score with Azure Vision ({len(file_content)} bytes)")
+            result = analyze_with_azure_vision(file_content, filename, prompt_text, max_tokens=1500)
+            if result:
+                logging.info(f"i-Score analysis complete (Vision): score={result.get('credit_score')}, risk={result.get('risk_level')}")
+                return result
+        except Exception as e:
+            logging.error(f"Vision i-Score error: {e}")
+
+    # Fallback to DI + OpenAI
+    text = extract_document_text(documents, 'iscore')
+    if not text:
+        return None
+    api_key = os.environ.get('AZURE_OPENAI_KEY')
+    endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+    deployment = os.environ.get('AZURE_OPENAI_DEPLOYMENT', 'finzeed-chat')
+    if not api_key or not endpoint:
+        return None
+    full_prompt = f"{prompt_text}\n\nI-SCORE REPORT TEXT:\n{text[:100000]}"
+    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-08-01-preview"
+    headers = {"Content-Type": "application/json", "api-key": api_key}
+    payload = {
+        "messages": [
+            {"role": "system", "content": "You are a precise credit analyst. Return ONLY valid JSON."},
+            {"role": "user", "content": full_prompt}
+        ],
+        "max_tokens": 1500, "temperature": 0.1
+    }
+    try:
+        logging.info("Calling OpenAI for i-Score analysis (fallback)...")
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        if response.status_code != 200:
+            return None
+        ai_response = response.json()['choices'][0]['message']['content'].strip()
+        if "```json" in ai_response:
+            ai_response = ai_response.split("```json")[1].split("```")[0].strip()
+        elif "```" in ai_response:
+            ai_response = ai_response.split("```")[1].split("```")[0].strip()
+        result = json.loads(ai_response)
+        logging.info(f"i-Score analysis complete (OpenAI): score={result.get('credit_score')}")
+        return result
+    except Exception as e:
+        logging.error(f"i-Score analysis error: {e}")
+        return None
+
+
 def parse_bank_transactions(text):
     """Parse bank statement text to extract credit transactions"""
     
@@ -2098,9 +2810,15 @@ def parse_bank_transactions(text):
         'transaction_count': transaction_count
     }
 
+_tables_ensured = False
+
 def ensure_new_tables(cursor):
     """Create new tables for the enhanced platform if they don't exist.
-    Each statement is executed separately to avoid pyodbc multi-statement issues."""
+    Each statement is executed separately to avoid pyodbc multi-statement issues.
+    Only runs once per function app instance."""
+    global _tables_ensured
+    if _tables_ensured:
+        return
     conn = cursor.connection
 
     table_stmts = [
@@ -2192,6 +2910,26 @@ def ensure_new_tables(cursor):
             created_at DATETIME DEFAULT GETDATE()
         )""",
 
+        """IF EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='user_id')
+                ALTER TABLE audit_log ADD user_id INT NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='user_type')
+                ALTER TABLE audit_log ADD user_type NVARCHAR(20) NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='action')
+                ALTER TABLE audit_log ADD action NVARCHAR(100) NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='entity_type')
+                ALTER TABLE audit_log ADD entity_type NVARCHAR(50) NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='entity_id')
+                ALTER TABLE audit_log ADD entity_id INT NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='details')
+                ALTER TABLE audit_log ADD details NVARCHAR(MAX) NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='ip_address')
+                ALTER TABLE audit_log ADD ip_address NVARCHAR(50) NULL;
+            IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='audit_log' AND COLUMN_NAME='admin_id' AND IS_NULLABLE='NO')
+                ALTER TABLE audit_log ALTER COLUMN admin_id INT NULL;
+        END""",
+
         """IF NOT EXISTS (
             SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = 'applications' AND COLUMN_NAME = 'application_status'
@@ -2234,10 +2972,11 @@ def ensure_new_tables(cursor):
             except:
                 pass
 
+    _tables_ensured = True
     logging.info("Database schema check completed")
 
 
-def analyze_with_claude(data, bank_analysis, openai_extraction=None):
+def analyze_with_claude(data, bank_analysis, balance_sheet_data=None, iscore_data=None):
     """
     Use Anthropic Claude to perform comprehensive credit risk analysis.
 
@@ -2279,6 +3018,42 @@ def analyze_with_claude(data, bank_analysis, openai_extraction=None):
 - Transactions Found: {bank_analysis.get('transactions_found', 0)}
 - Months Analyzed: {bank_analysis.get('months_analyzed', 0)}"""
 
+        # Balance sheet summary
+        balance_sheet_summary = "No balance sheet provided."
+        if balance_sheet_data:
+            balance_sheet_summary = f"""Balance Sheet Analysis (via OpenAI extraction):
+- Total Assets: {balance_sheet_data.get('total_assets', 'N/A')} EGP
+- Current Assets: {balance_sheet_data.get('current_assets', 'N/A')} EGP
+- Total Liabilities: {balance_sheet_data.get('total_liabilities', 'N/A')} EGP
+- Current Liabilities: {balance_sheet_data.get('current_liabilities', 'N/A')} EGP
+- Equity: {balance_sheet_data.get('equity', 'N/A')} EGP
+- Net Income: {balance_sheet_data.get('net_income', 'N/A')} EGP
+- Current Ratio: {balance_sheet_data.get('current_ratio', 'N/A')}
+- Debt-to-Equity: {balance_sheet_data.get('debt_to_equity', 'N/A')}
+- Working Capital: {balance_sheet_data.get('working_capital', 'N/A')} EGP
+- Cash: {balance_sheet_data.get('cash_and_equivalents', 'N/A')} EGP
+- Health Assessment: {balance_sheet_data.get('health_assessment', 'N/A')}
+- Reporting Period: {balance_sheet_data.get('reporting_period', 'N/A')}
+- Key Observations: {', '.join(balance_sheet_data.get('key_observations', []))}"""
+
+        # i-Score summary
+        iscore_summary = "No i-Score report provided."
+        if iscore_data:
+            iscore_summary = f"""i-Score Credit Report Analysis (via OpenAI extraction):
+- Credit Score: {iscore_data.get('credit_score', 'N/A')}
+- Score Rating: {iscore_data.get('score_rating', 'N/A')}
+- Risk Level: {iscore_data.get('risk_level', 'N/A')}
+- Active Credit Facilities: {iscore_data.get('active_facilities', 'N/A')}
+- Total Outstanding Debt: {iscore_data.get('total_outstanding_debt', 'N/A')} EGP
+- Credit Utilization: {iscore_data.get('credit_utilization_pct', 'N/A')}%
+- On-Time Payments: {iscore_data.get('on_time_payments', 'N/A')}
+- Late Payments: {iscore_data.get('late_payments', 'N/A')}
+- Defaults: {iscore_data.get('defaults', 'N/A')}
+- Bounced Checks: {iscore_data.get('bounced_checks', 'N/A')}
+- Legal Cases: {iscore_data.get('legal_cases', 'N/A')}
+- Credit Inquiries (12m): {iscore_data.get('credit_inquiries_last_12m', 'N/A')}
+- Key Observations: {', '.join(iscore_data.get('key_observations', []))}"""
+
         prompt = f"""You are Finzeed's AI Credit Analyst. Analyze this SME credit application and produce a structured credit assessment report.
 
 ## Applicant Information
@@ -2292,6 +3067,10 @@ def analyze_with_claude(data, bank_analysis, openai_extraction=None):
 - Requested Installments: {requested_installments}
 
 ## {bank_summary}
+
+## {balance_sheet_summary}
+
+## {iscore_summary}
 
 ## Finzeed Credit Parameters
 - Credit range: EGP 100,000 to 5,000,000
@@ -2326,6 +3105,18 @@ Analyze all available data and return ONLY a valid JSON object (no markdown, no 
     "bounce_count": <number or null>,
     "seasonal_pattern": <string or null>
   }},
+  "balance_sheet_analysis": {{
+    "financial_health": "strong" or "moderate" or "weak" or "N/A",
+    "current_ratio_verdict": "<assessment string>",
+    "debt_level_verdict": "<assessment string>",
+    "key_concerns": [<list of strings>]
+  }},
+  "iscore_analysis": {{
+    "credit_score": <number or null>,
+    "risk_level": "low" or "medium" or "high" or "very_high" or "N/A",
+    "payment_history_verdict": "<assessment string>",
+    "key_concerns": [<list of strings>]
+  }},
   "risk_factors": [<list of risk strings>],
   "positive_factors": [<list of positive strings>],
   "executive_summary": "<2-3 sentence summary for the credit team>"
@@ -2336,7 +3127,7 @@ Be conservative with approvals. If data is insufficient, recommend REVIEW. Never
         logging.info("Calling Anthropic Claude for credit analysis...")
 
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-6",
             max_tokens=2000,
             messages=[
                 {
@@ -2388,8 +3179,9 @@ def save_credit_report(application_id, claude_report):
                 application_id, ai_recommendation, confidence_score,
                 recommended_limit, recommended_tenor,
                 revenue_analysis, bank_analysis,
+                balance_sheet_analysis, iscore_analysis,
                 risk_factors, positive_factors, executive_summary, full_report
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             application_id,
             claude_report.get('recommendation', 'REVIEW'),
@@ -2398,6 +3190,8 @@ def save_credit_report(application_id, claude_report):
             claude_report.get('recommended_tenor_months', 6),
             json.dumps(claude_report.get('revenue_analysis', {})),
             json.dumps(claude_report.get('bank_analysis', {})),
+            json.dumps(claude_report.get('balance_sheet_analysis', {})),
+            json.dumps(claude_report.get('iscore_analysis', {})),
             json.dumps(claude_report.get('risk_factors', [])),
             json.dumps(claude_report.get('positive_factors', [])),
             claude_report.get('executive_summary', ''),
@@ -2440,9 +3234,16 @@ def perform_ai_assessment(data):
         except:
             revenue = 0
     
-    # Analyze bank statements
+    # Analyze all documents
     bank_analysis = analyze_bank_statements(documents)
-    
+    balance_sheet_analysis = analyze_balance_sheet(documents)
+    iscore_analysis = analyze_iscore(documents)
+
+    if balance_sheet_analysis:
+        logging.info(f"Balance sheet: health={balance_sheet_analysis.get('health_assessment')}")
+    if iscore_analysis:
+        logging.info(f"i-Score: score={iscore_analysis.get('credit_score')}, risk={iscore_analysis.get('risk_level')}")
+
     revenue_verification_note = None
     revenue_mismatch = False
     verified_revenue = revenue
@@ -2546,7 +3347,7 @@ def perform_ai_assessment(data):
     recommendations = [r for r in recommendations if r is not None]
 
     # ===== DUAL-AI: Send all data to Claude for comprehensive analysis =====
-    claude_report = analyze_with_claude(data, bank_analysis)
+    claude_report = analyze_with_claude(data, bank_analysis, balance_sheet_analysis, iscore_analysis)
 
     if claude_report:
         # Claude successfully analyzed — use its recommendation for internal report
@@ -2565,5 +3366,7 @@ def perform_ai_assessment(data):
         'risk_factors': risk_factors,
         'recommendations': recommendations,
         'bank_analysis': bank_analysis,
+        'balance_sheet_analysis': balance_sheet_analysis,
+        'iscore_analysis': iscore_analysis,
         'claude_report': claude_report
     }

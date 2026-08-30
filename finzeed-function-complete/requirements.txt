@@ -6,6 +6,7 @@ azure-core
 openai
 python-dateutil
 pdfplumber
+PyMuPDF
 requests
 PyJWT
 sendgrid
