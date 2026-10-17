@@ -2186,51 +2186,7 @@
               </div>
             </div>
 
-            <div class="upload-row">
-              <div class="upload-box" onclick="document.getElementById('balanceSheet2025').click()">
-                <p>Balance sheet 2025 *</p>
-                <small>Financial year ended 31 Dec 2025 (PDF/Image).</small>
-                <div class="file-name" id="balanceSheet2025Name"></div>
-                <input type="file" id="balanceSheet2025" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'balanceSheet2025Name')" />
-              </div>
-              <div class="upload-box" onclick="document.getElementById('taxReturn2025').click()">
-                <p>Income tax return 2025</p>
-                <small>Return filed for 2025 (PDF/Image).</small>
-                <div class="file-name" id="taxReturn2025Name"></div>
-                <input type="file" id="taxReturn2025" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxReturn2025Name')" />
-              </div>
-            </div>
-
-            <div class="upload-row">
-              <div class="upload-box" onclick="document.getElementById('balanceSheet2024').click()">
-                <p>Balance sheet 2024</p>
-                <small>Financial year ended 31 Dec 2024 (PDF/Image).</small>
-                <div class="file-name" id="balanceSheet2024Name"></div>
-                <input type="file" id="balanceSheet2024" accept="image/*,.pdf" onchange="handleFileSelect(this, 'balanceSheet2024Name')" />
-              </div>
-              <div class="upload-box" onclick="document.getElementById('taxReturn2024').click()">
-                <p>Income tax return 2024</p>
-                <small>Return filed for 2024 (PDF/Image).</small>
-                <div class="file-name" id="taxReturn2024Name"></div>
-                <input type="file" id="taxReturn2024" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxReturn2024Name')" />
-              </div>
-            </div>
-
-            <div class="upload-row">
-              <div class="upload-box" onclick="document.getElementById('balanceSheet2023').click()">
-                <p>Balance sheet 2023</p>
-                <small>Financial year ended 31 Dec 2023 (PDF/Image).</small>
-                <div class="file-name" id="balanceSheet2023Name"></div>
-                <input type="file" id="balanceSheet2023" accept="image/*,.pdf" onchange="handleFileSelect(this, 'balanceSheet2023Name')" />
-              </div>
-              <div class="upload-box" onclick="document.getElementById('taxReturn2023').click()">
-                <p>Income tax return 2023</p>
-                <small>Return filed for 2023 (PDF/Image).</small>
-                <div class="file-name" id="taxReturn2023Name"></div>
-                <input type="file" id="taxReturn2023" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxReturn2023Name')" />
-              </div>
-            </div>
-
+            <div id="financialYears"></div>
 
             <div class="upload-row">
               <div class="upload-box" onclick="document.getElementById('commercialReg').click()">
@@ -2749,6 +2705,45 @@
       if (wrap) wrap.classList.toggle('checked', box.checked);
     }
 
+    // The three financial years the application asks for. Statements and tax
+    // returns for a year are not ready the moment it ends, so the window only
+    // moves on in FY_ROLLOVER_MONTH: through January 2027 we still ask for
+    // 2025/2024/2023, and from 1 February 2027 for 2026/2025/2024.
+    var FY_ROLLOVER_MONTH = 2;   // 1 = January, 2 = February
+    function financialYears() {
+      var now = new Date();
+      var latest = (now.getMonth() + 1) >= FY_ROLLOVER_MONTH
+        ? now.getFullYear() - 1
+        : now.getFullYear() - 2;
+      return [latest, latest - 1, latest - 2];
+    }
+
+    function renderFinancialYears() {
+      var host = document.getElementById('financialYears');
+      if (!host) return;
+      host.innerHTML = financialYears().map(function (y, i) {
+        var req = i === 0 ? ' required' : '';
+        var star = i === 0 ? ' *' : '';
+        return '<div class="upload-row">' +
+          '<div class="upload-box" onclick="document.getElementById(\'balanceSheet' + y + '\').click()">' +
+            '<p>Balance sheet ' + y + star + '</p>' +
+            '<small>Financial year ended 31 Dec ' + y + ' (PDF/Image).</small>' +
+            '<div class="file-name" id="balanceSheet' + y + 'Name"></div>' +
+            '<input type="file" id="balanceSheet' + y + '" accept="image/*,.pdf"' + req +
+              ' onchange="handleFileSelect(this, \'balanceSheet' + y + 'Name\')" />' +
+          '</div>' +
+          '<div class="upload-box" onclick="document.getElementById(\'taxReturn' + y + '\').click()">' +
+            '<p>Income tax return ' + y + '</p>' +
+            '<small>Return filed for ' + y + ' (PDF/Image).</small>' +
+            '<div class="file-name" id="taxReturn' + y + 'Name"></div>' +
+            '<input type="file" id="taxReturn' + y + '" accept="image/*,.pdf"' +
+              ' onchange="handleFileSelect(this, \'taxReturn' + y + 'Name\')" />' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+    renderFinancialYears();
+
     function handleFileSelect(input, nameElementId) {
     var file = input.files[0];
     var nameElement = document.getElementById(nameElementId);
@@ -2845,26 +2840,18 @@
       if (uploadedFiles['taxCard']) {
         formData.append('tax_card', uploadedFiles['taxCard']);
       }
-      if (uploadedFiles['balanceSheet2025']) {
-        formData.append('balance_sheet_2025', uploadedFiles['balanceSheet2025']);
-        formData.append('balance_sheet', uploadedFiles['balanceSheet2025']);
-      }
-      if (uploadedFiles['taxReturn2025']) {
-        formData.append('tax_return_2025', uploadedFiles['taxReturn2025']);
-      }
-      if (uploadedFiles['balanceSheet2024']) {
-        formData.append('balance_sheet_2024', uploadedFiles['balanceSheet2024']);
-        formData.append('balance_sheet', uploadedFiles['balanceSheet2024']);
-      }
-      if (uploadedFiles['taxReturn2024']) {
-        formData.append('tax_return_2024', uploadedFiles['taxReturn2024']);
-      }
-      if (uploadedFiles['balanceSheet2023']) {
-        formData.append('balance_sheet_2023', uploadedFiles['balanceSheet2023']);
-        formData.append('balance_sheet', uploadedFiles['balanceSheet2023']);
-      }
-      if (uploadedFiles['taxReturn2023']) {
-        formData.append('tax_return_2023', uploadedFiles['taxReturn2023']);
+      var fyYears = financialYears();
+      fyYears.forEach(function (y) {
+        if (uploadedFiles['balanceSheet' + y]) {
+          formData.append('balance_sheet_' + y, uploadedFiles['balanceSheet' + y]);
+        }
+        if (uploadedFiles['taxReturn' + y]) {
+          formData.append('tax_return_' + y, uploadedFiles['taxReturn' + y]);
+        }
+      });
+      // the current backend still reads a single 'balance_sheet'
+      if (uploadedFiles['balanceSheet' + fyYears[0]]) {
+        formData.append('balance_sheet', uploadedFiles['balanceSheet' + fyYears[0]]);
       }
       if (uploadedFiles['iscore']) {
         formData.append('iscore', uploadedFiles['iscore']);
