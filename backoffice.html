@@ -1159,6 +1159,34 @@ async function viewApplication(id) {
         html += '</div>';
       }
 
+      // Product eligibility against the commercial registration
+      if (cr.registration_analysis && cr.registration_analysis.eligibility) {
+        var ra = cr.registration_analysis;
+        var eMap = {
+          covered:     { label: 'Products covered by registration', color: 'var(--primary)', icon: '&#x2714;' },
+          not_covered: { label: 'Products NOT covered by registration', color: '#b91c1c', icon: '&#x26A0;' },
+          unclear:     { label: 'Registration coverage unclear', color: '#92400e', icon: '&#x3F;' }
+        };
+        var e = eMap[ra.eligibility] || eMap.unclear;
+        html += '<div class="analysis-block" style="margin-top:1rem;border-left:4px solid ' + e.color + ';padding-left:0.9rem;">';
+        html += '<strong style="color:' + e.color + ';">' + e.icon + ' ' + e.label + '</strong>';
+        if (ra.requested_products) {
+          html += '<div style="margin-top:0.4rem;font-size:0.875rem;"><strong>Requested:</strong> ' + esc(ra.requested_products) + '</div>';
+        }
+        if (ra.relied_on_activity) {
+          html += '<div style="margin-top:0.3rem;font-size:0.875rem;"><strong>Registered activity relied on:</strong> ' +
+                  '<span dir="auto">' + esc(ra.relied_on_activity) + '</span></div>';
+        }
+        if (ra.reasoning) {
+          html += '<div style="margin-top:0.3rem;font-size:0.875rem;color:#374151;">' + esc(ra.reasoning) + '</div>';
+        }
+        if (ra.ask_the_applicant) {
+          html += '<div style="margin-top:0.5rem;padding:0.6rem 0.7rem;background:#fffbeb;border-radius:6px;font-size:0.85rem;">' +
+                  '<strong>Ask the applicant:</strong> ' + esc(ra.ask_the_applicant) + '</div>';
+        }
+        html += '</div>';
+      }
+
       // Risk + positive factors
       html += '<div class="detail-grid" style="margin-top:1rem;">';
       if (cr.risk_factors && cr.risk_factors.length) {

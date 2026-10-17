@@ -1057,8 +1057,8 @@ def handle_backoffice_application_detail(req, req_body):
         cursor.execute("""
             SELECT ai_recommendation, confidence_score, recommended_limit, recommended_tenor,
                    revenue_analysis, bank_analysis, balance_sheet_analysis, iscore_analysis,
-                   identity_verification, risk_factors, positive_factors, executive_summary,
-                   full_report, created_at
+                   identity_verification, registration_analysis, risk_factors, positive_factors,
+                   executive_summary, full_report, created_at
             FROM credit_reports WHERE application_id = ?
             ORDER BY created_at DESC
         """, (app_id,))
@@ -1076,11 +1076,12 @@ def handle_backoffice_application_detail(req, req_body):
                 "balance_sheet_analysis": json.loads(cr_row[6]) if cr_row[6] else {},
                 "iscore_analysis": json.loads(cr_row[7]) if cr_row[7] else {},
                 "identity_verification": json.loads(cr_row[8]) if cr_row[8] else {},
-                "risk_factors": json.loads(cr_row[9]) if cr_row[9] else [],
-                "positive_factors": json.loads(cr_row[10]) if cr_row[10] else [],
-                "executive_summary": cr_row[11] or '',
-                "full_report": json.loads(cr_row[12]) if cr_row[12] else {},
-                "created_at": str(cr_row[13]) if cr_row[13] else ''
+                "registration_analysis": json.loads(cr_row[9]) if cr_row[9] else {},
+                "risk_factors": json.loads(cr_row[10]) if cr_row[10] else [],
+                "positive_factors": json.loads(cr_row[11]) if cr_row[11] else [],
+                "executive_summary": cr_row[12] or '',
+                "full_report": json.loads(cr_row[13]) if cr_row[13] else {},
+                "created_at": str(cr_row[14]) if cr_row[14] else ''
             }
 
         # Documents
@@ -1398,6 +1399,7 @@ def handle_backoffice_upload(req):
         requested_amount = req.form.get('requested_amount', '')
         requested_installments = req.form.get('requested_installments', '')
         declared_monthly_inflows = req.form.get('declared_monthly_inflows', '0')
+        product_categories = req.form.get('product_categories', '')
         application_id = req.form.get('application_id', '')  # optional: attach to existing app
 
         try:
@@ -1428,6 +1430,7 @@ def handle_backoffice_upload(req):
             'requested_amount': requested_amount,
             'requested_installments': requested_installments,
             'declared_monthly_inflows': declared_monthly_inflows,
+            'product_categories': product_categories,
             'documents': {
                 'bank_statements': [], 'national_id': [], 'iscore': [],
                 'balance_sheet': [], 'commercial_registration': [], 'tax_card': []
@@ -1771,6 +1774,7 @@ def handle_form_data_request(req):
         requested_amount = req.form.get('requested_amount', '')
         requested_installments = req.form.get('requested_installments', '')
         declared_monthly_inflows = req.form.get('declared_monthly_inflows', '0')
+        product_categories = req.form.get('product_categories', '')
 
         logging.info(f"Form data - Company: {company}, Email: {email}, Revenue: {revenue}")
         
@@ -1807,6 +1811,7 @@ def handle_form_data_request(req):
             'requested_amount': requested_amount,
             'requested_installments': requested_installments,
             'declared_monthly_inflows': declared_monthly_inflows,
+            'product_categories': product_categories,
             'documents': {
                 'bank_statements': [],
                 'national_id': [],
@@ -2827,6 +2832,130 @@ Return ONLY valid JSON (no markdown, no code blocks):
         return None
 
 
+def analyze_commercial_registration(documents):
+    """Extract the licensed activities from an Egyptian commercial registration.
+
+    Unlike the balance sheet and i-Score readers this walks every uploaded file,
+    because registrations are routinely scanned a page at a time and the
+    activities clause is often not on the first page. Activities are merged
+    across files; the other fields are taken from the first file that yields
+    them.
+    """
+    doc_list = documents.get('commercial_registration', [])
+    if not doc_list or not isinstance(doc_list, list):
+        return None
+
+    prompt_text = """You are a corporate records analyst reading an Egyptian commercial registration (السجل التجاري).
+
+TASK: Extract the registration details and, above all, the activities the company is licensed to carry out (الأنشطة / غرض الشركة).
+
+INSTRUCTIONS:
+1. Quote each licensed activity as written, in its original language. Do not translate, summarise or merge separate activities.
+2. Also give a short English gloss of each activity, for a reader who does not read Arabic.
+3. Egyptian registrations often state a deliberately broad purpose, for example "التجارة العامة والتوريدات" (general trade and supplies) or "الاستيراد والتصدير" (import and export). Where the stated purpose is broad in that way, say so in scope_breadth, because such a clause legitimately covers many product lines.
+4. If the document is unreadable, truncated, or the activities clause is not visible, say so plainly rather than guessing.
+
+The document may be in Arabic or English or mixed — handle both.
+
+Return ONLY valid JSON (no markdown, no code blocks):
+{
+    "registration_number": "<as printed, or null>",
+    "company_name": "<as printed, or null>",
+    "legal_form": "<e.g. LLC, sole proprietorship, or null>",
+    "issue_date": "<date or null>",
+    "expiry_date": "<date or null>",
+    "capital": <number or null>,
+    "activities": [
+        {"text_as_written": "<verbatim>", "english": "<short gloss>"}
+    ],
+    "scope_breadth": "broad" or "specific" or "unclear",
+    "activities_legible": true or false,
+    "key_observations": [<list of observation strings>]
+}"""
+
+    merged = None
+    activities = []
+    seen = set()
+
+    for idx, doc in enumerate(doc_list, 1):
+        result = None
+        filename = doc.get('filename', 'commercial_registration_%d.pdf' % idx)
+        if fitz:
+            try:
+                file_content = base64.b64decode(doc.get('content', ''))
+                logging.info(f"Analyzing commercial registration with Azure Vision: {filename} ({len(file_content)} bytes)")
+                result = analyze_with_azure_vision(file_content, filename, prompt_text, max_tokens=2000)
+            except Exception as e:
+                logging.error(f"Vision commercial registration error for {filename}: {e}")
+
+        if not result:
+            logging.warning(f"Vision returned nothing for {filename}")
+            continue
+
+        if merged is None:
+            merged = dict(result)
+            merged['activities'] = []
+        else:
+            # keep the first non-empty value for the single-valued fields
+            for key in ('registration_number', 'company_name', 'legal_form',
+                        'issue_date', 'expiry_date', 'capital'):
+                if not merged.get(key) and result.get(key):
+                    merged[key] = result[key]
+            if result.get('scope_breadth') == 'broad':
+                merged['scope_breadth'] = 'broad'
+            if result.get('activities_legible'):
+                merged['activities_legible'] = True
+            for obs in (result.get('key_observations') or []):
+                if obs not in (merged.get('key_observations') or []):
+                    merged.setdefault('key_observations', []).append(obs)
+
+        for act in (result.get('activities') or []):
+            if not isinstance(act, dict):
+                continue
+            key = (act.get('text_as_written') or act.get('english') or '').strip()
+            if key and key not in seen:
+                seen.add(key)
+                activities.append(act)
+
+    if merged is None:
+        # Fall back to text extraction when vision is unavailable or failed on
+        # every file. Only the activities matter enough to retry this way.
+        text = extract_document_text(documents, 'commercial_registration')
+        if not text:
+            return None
+        api_key = os.environ.get('AZURE_OPENAI_KEY')
+        endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+        deployment = os.environ.get('AZURE_OPENAI_DEPLOYMENT', 'finzeed-chat')
+        if not api_key or not endpoint:
+            return None
+        url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version=2024-08-01-preview"
+        headers = {"Content-Type": "application/json", "api-key": api_key}
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a precise corporate records analyst. Return ONLY valid JSON."},
+                {"role": "user", "content": f"{prompt_text}\n\nCOMMERCIAL REGISTRATION TEXT:\n{text[:100000]}"}
+            ],
+            "max_tokens": 2000, "temperature": 0.1
+        }
+        try:
+            logging.info("Calling OpenAI for commercial registration analysis (fallback)...")
+            response = requests.post(url, headers=headers, json=payload, timeout=120)
+            if response.status_code != 200:
+                logging.error(f"OpenAI commercial registration error: {response.status_code}")
+                return None
+            ai_response = _clean_ai_json(response.json()['choices'][0]['message']['content'].strip())
+            merged = json.loads(ai_response)
+            activities = [a for a in (merged.get('activities') or []) if isinstance(a, dict)]
+        except Exception as e:
+            logging.error(f"Commercial registration analysis error: {e}")
+            return None
+
+    merged['activities'] = activities
+    logging.info(f"Commercial registration: {len(activities)} activities, "
+                 f"breadth={merged.get('scope_breadth')}, legible={merged.get('activities_legible')}")
+    return merged
+
+
 def parse_bank_transactions(text):
     """Parse bank statement text to extract credit transactions"""
     
@@ -2899,6 +3028,7 @@ def ensure_new_tables(cursor):
             bank_analysis NVARCHAR(MAX),
             balance_sheet_analysis NVARCHAR(MAX),
             iscore_analysis NVARCHAR(MAX),
+            registration_analysis NVARCHAR(MAX),
             identity_verification NVARCHAR(MAX),
             risk_factors NVARCHAR(MAX),
             positive_factors NVARCHAR(MAX),
@@ -2973,6 +3103,8 @@ def ensure_new_tables(cursor):
                 ALTER TABLE credit_reports ADD iscore_analysis NVARCHAR(MAX) NULL;
             IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credit_reports' AND COLUMN_NAME='identity_verification')
                 ALTER TABLE credit_reports ADD identity_verification NVARCHAR(MAX) NULL;
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credit_reports' AND COLUMN_NAME='registration_analysis')
+                ALTER TABLE credit_reports ADD registration_analysis NVARCHAR(MAX) NULL;
         END""",
 
         """IF EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
@@ -3050,7 +3182,8 @@ def ensure_new_tables(cursor):
                         f"statement(s) — will retry on next request")
 
 
-def analyze_with_claude(data, bank_analysis, balance_sheet_data=None, iscore_data=None):
+def analyze_with_claude(data, bank_analysis, balance_sheet_data=None, iscore_data=None,
+                        registration_data=None):
     """
     Use Anthropic Claude to perform comprehensive credit risk analysis.
 
@@ -3110,6 +3243,37 @@ def analyze_with_claude(data, bank_analysis, balance_sheet_data=None, iscore_dat
 - Reporting Period: {balance_sheet_data.get('reporting_period', 'N/A')}
 - Key Observations: {', '.join(balance_sheet_data.get('key_observations', []))}"""
 
+        # Commercial registration and the products this credit is meant to buy.
+        # These are presented together because the only useful question is
+        # whether the one covers the other.
+        requested_products = (data.get('product_categories') or '').strip()
+        registration_summary = "No commercial registration provided."
+        if registration_data:
+            acts = registration_data.get('activities') or []
+            if acts:
+                act_lines = "\n".join(
+                    "  - %s%s" % (
+                        (a.get('text_as_written') or '').strip(),
+                        (" [%s]" % a.get('english').strip()) if a.get('english') else ""
+                    ) for a in acts if isinstance(a, dict)
+                )
+            else:
+                act_lines = "  (no activities could be read from the document)"
+            registration_summary = f"""Commercial Registration:
+- Registration Number: {registration_data.get('registration_number', 'N/A')}
+- Registered Name: {registration_data.get('company_name', 'N/A')}
+- Legal Form: {registration_data.get('legal_form', 'N/A')}
+- Issued: {registration_data.get('issue_date', 'N/A')}   Expires: {registration_data.get('expiry_date', 'N/A')}
+- Stated Capital: {registration_data.get('capital', 'N/A')}
+- Scope Breadth: {registration_data.get('scope_breadth', 'unclear')}
+- Activities Legible: {registration_data.get('activities_legible', 'unknown')}
+- Licensed Activities:
+{act_lines}"""
+
+        products_summary = ("Products this credit will buy (selected by the applicant): "
+                            + requested_products) if requested_products else \
+                           "The applicant did not state which products this credit will buy."
+
         # i-Score summary
         iscore_summary = "No i-Score report provided."
         if iscore_data:
@@ -3145,6 +3309,25 @@ def analyze_with_claude(data, bank_analysis, balance_sheet_data=None, iscore_dat
 ## {balance_sheet_summary}
 
 ## {iscore_summary}
+
+## {registration_summary}
+
+## {products_summary}
+
+## Judging Product Eligibility
+Compare the products the applicant says this credit will buy against the activities
+on the commercial registration, and report the result in registration_analysis.
+- Egyptian registrations are often deliberately broad. A clause such as general
+  trade and supplies, or import and export, genuinely covers most product lines —
+  treat it as covering them unless the product is clearly a regulated exception.
+- Answer "covered" only when the activities plainly permit every stated product,
+  "not_covered" when a product falls outside them, and "unclear" when the document
+  was illegible, no registration was supplied, or the applicant stated no products.
+- Quote the activity text you relied on, so a human can check your reasoning.
+- A mismatch is a risk factor to be raised for review, never grounds on its own to
+  reject. Say what should be asked of the applicant instead.
+- Do not treat a mismatch as fraud. The usual cause is an out-of-date registration
+  or an applicant describing their products loosely.
 
 ## Finzeed Credit Parameters
 - Credit range: EGP 100,000 to 5,000,000
@@ -3190,6 +3373,13 @@ Analyze all available data and return ONLY a valid JSON object (no markdown, no 
     "risk_level": "low" or "medium" or "high" or "very_high" or "N/A",
     "payment_history_verdict": "<assessment string>",
     "key_concerns": [<list of strings>]
+  }},
+  "registration_analysis": {{
+    "eligibility": "covered" or "not_covered" or "unclear",
+    "requested_products": "<the products as stated by the applicant>",
+    "relied_on_activity": "<the activity text that decided it, verbatim, or null>",
+    "reasoning": "<one or two sentences>",
+    "ask_the_applicant": "<what to request from them, or null if nothing>"
   }},
   "risk_factors": [<list of risk strings>],
   "positive_factors": [<list of positive strings>],
@@ -3253,9 +3443,9 @@ def save_credit_report(application_id, claude_report):
                 application_id, ai_recommendation, confidence_score,
                 recommended_limit, recommended_tenor,
                 revenue_analysis, bank_analysis,
-                balance_sheet_analysis, iscore_analysis,
+                balance_sheet_analysis, iscore_analysis, registration_analysis,
                 risk_factors, positive_factors, executive_summary, full_report
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             application_id,
             claude_report.get('recommendation', 'REVIEW'),
@@ -3266,6 +3456,7 @@ def save_credit_report(application_id, claude_report):
             json.dumps(claude_report.get('bank_analysis', {})),
             json.dumps(claude_report.get('balance_sheet_analysis', {})),
             json.dumps(claude_report.get('iscore_analysis', {})),
+            json.dumps(claude_report.get('registration_analysis', {})),
             json.dumps(claude_report.get('risk_factors', [])),
             json.dumps(claude_report.get('positive_factors', [])),
             claude_report.get('executive_summary', ''),
@@ -3312,11 +3503,15 @@ def perform_ai_assessment(data):
     bank_analysis = analyze_bank_statements(documents)
     balance_sheet_analysis = analyze_balance_sheet(documents)
     iscore_analysis = analyze_iscore(documents)
+    registration_analysis = analyze_commercial_registration(documents)
 
     if balance_sheet_analysis:
         logging.info(f"Balance sheet: health={balance_sheet_analysis.get('health_assessment')}")
     if iscore_analysis:
         logging.info(f"i-Score: score={iscore_analysis.get('credit_score')}, risk={iscore_analysis.get('risk_level')}")
+    if registration_analysis:
+        logging.info(f"Commercial registration: {len(registration_analysis.get('activities', []))} activities, "
+                     f"breadth={registration_analysis.get('scope_breadth')}")
 
     revenue_verification_note = None
     revenue_mismatch = False
@@ -3421,7 +3616,8 @@ def perform_ai_assessment(data):
     recommendations = [r for r in recommendations if r is not None]
 
     # ===== DUAL-AI: Send all data to Claude for comprehensive analysis =====
-    claude_report = analyze_with_claude(data, bank_analysis, balance_sheet_analysis, iscore_analysis)
+    claude_report = analyze_with_claude(data, bank_analysis, balance_sheet_analysis,
+                                        iscore_analysis, registration_analysis)
 
     if claude_report:
         # Claude successfully analyzed — use its recommendation for internal report
@@ -3442,5 +3638,6 @@ def perform_ai_assessment(data):
         'bank_analysis': bank_analysis,
         'balance_sheet_analysis': balance_sheet_analysis,
         'iscore_analysis': iscore_analysis,
+        'registration_analysis': registration_analysis,
         'claude_report': claude_report
     }
