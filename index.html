@@ -2128,6 +2128,23 @@
             <textarea id="businessDescription" name="businessDescription" placeholder="Describe your business activities, products/services, and main customers" required></textarea>
           </div>
 
+
+          <div class="form-group">
+            <label>Which products will this credit buy? *</label>
+            <small style="display:block;margin:-0.1rem 0 0.6rem;color:#6b7280;font-size:0.8rem;">Select every product line you intend to purchase. We check these against the activities on your commercial registration.</small>
+            <div class="prod-grid">
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Agricultural & food products" onchange="handleProductToggle(this)" /><span>Agricultural &amp; food products<small>Grain, produce, oils, processed food</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Electronics & appliances" onchange="handleProductToggle(this)" /><span>Electronics &amp; appliances<small>Consumer electronics, white goods</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Construction materials" onchange="handleProductToggle(this)" /><span>Construction materials<small>Cement, steel, finishing, fittings</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Textiles & garments" onchange="handleProductToggle(this)" /><span>Textiles &amp; garments<small>Fabric, yarn, ready-made clothing</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Automotive parts" onchange="handleProductToggle(this)" /><span>Automotive parts<small>Spares, tyres, lubricants</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="FMCG & consumer goods" onchange="handleProductToggle(this)" /><span>FMCG &amp; consumer goods<small>Household, personal care, packaged goods</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Industrial equipment & machinery" onchange="handleProductToggle(this)" /><span>Industrial equipment &amp; machinery<small>Production lines, spare parts, tooling</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Packaging & printing" onchange="handleProductToggle(this)" /><span>Packaging &amp; printing<small>Cartons, film, labels, print inputs</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Chemicals & plastics" onchange="handleProductToggle(this)" /><span>Chemicals &amp; plastics<small>Raw polymers, industrial chemicals</small></span></label>
+              <label class="prod-chk"><input type="checkbox" name="productCategories" value="Other" onchange="handleProductToggle(this)" /><span>Other<small>Describe it in the business description above</small></span></label>
+            </div>
+          </div>
           <div class="form-group">
             <label for="purpose">What do you need the credit for?</label>
             <textarea id="purpose" name="purpose" placeholder="e.g. Buying raw materials, importing inventory, supporting seasonal orders"></textarea>
@@ -2157,24 +2174,9 @@
             <div class="upload-row">
               <div class="upload-box" id="bankStatementsBox" onclick="document.getElementById('bankStatements').click()">
                 <p>Bank statements *</p>
-                <small>Last 3-12 months in PDF format. Multiple files allowed.</small>
+                <small>Last 12 months in PDF format. Multiple files allowed.</small>
                 <input type="file" id="bankStatements" accept=".pdf" multiple required onchange="handleBankStatementsSelect(this)" />
                 <div id="bankStatementsList" class="file-list"></div>
-              </div>
-              <div class="upload-box" onclick="document.getElementById('balanceSheet').click()">
-                <p>Balance sheet *</p>
-                <small>Upload your most recent balance sheet (PDF/Image).</small>
-                <div class="file-name" id="balanceSheetName"></div>
-                <input type="file" id="balanceSheet" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'balanceSheetName')" />
-              </div>
-            </div>
-
-            <div class="upload-row">
-              <div class="upload-box" onclick="document.getElementById('nationalId').click()">
-                <p>National ID *</p>
-                <small>Front and back of your national ID card.</small>
-                <div class="file-name" id="nationalIdName"></div>
-                <input type="file" id="nationalId" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'nationalIdName')" />
               </div>
               <div class="upload-box" onclick="document.getElementById('iscore').click()">
                 <p>i-Score (Credit Bureau)</p>
@@ -2183,6 +2185,52 @@
                 <input type="file" id="iscore" accept="image/*,.pdf" onchange="handleFileSelect(this, 'iscoreName')" />
               </div>
             </div>
+
+            <div class="upload-row">
+              <div class="upload-box" onclick="document.getElementById('balanceSheet2025').click()">
+                <p>Balance sheet 2025 *</p>
+                <small>Financial year ended 31 Dec 2025 (PDF/Image).</small>
+                <div class="file-name" id="balanceSheet2025Name"></div>
+                <input type="file" id="balanceSheet2025" accept="image/*,.pdf" required onchange="handleFileSelect(this, 'balanceSheet2025Name')" />
+              </div>
+              <div class="upload-box" onclick="document.getElementById('taxReturn2025').click()">
+                <p>Income tax return 2025</p>
+                <small>Return filed for 2025 (PDF/Image).</small>
+                <div class="file-name" id="taxReturn2025Name"></div>
+                <input type="file" id="taxReturn2025" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxReturn2025Name')" />
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <div class="upload-box" onclick="document.getElementById('balanceSheet2024').click()">
+                <p>Balance sheet 2024</p>
+                <small>Financial year ended 31 Dec 2024 (PDF/Image).</small>
+                <div class="file-name" id="balanceSheet2024Name"></div>
+                <input type="file" id="balanceSheet2024" accept="image/*,.pdf" onchange="handleFileSelect(this, 'balanceSheet2024Name')" />
+              </div>
+              <div class="upload-box" onclick="document.getElementById('taxReturn2024').click()">
+                <p>Income tax return 2024</p>
+                <small>Return filed for 2024 (PDF/Image).</small>
+                <div class="file-name" id="taxReturn2024Name"></div>
+                <input type="file" id="taxReturn2024" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxReturn2024Name')" />
+              </div>
+            </div>
+
+            <div class="upload-row">
+              <div class="upload-box" onclick="document.getElementById('balanceSheet2023').click()">
+                <p>Balance sheet 2023</p>
+                <small>Financial year ended 31 Dec 2023 (PDF/Image).</small>
+                <div class="file-name" id="balanceSheet2023Name"></div>
+                <input type="file" id="balanceSheet2023" accept="image/*,.pdf" onchange="handleFileSelect(this, 'balanceSheet2023Name')" />
+              </div>
+              <div class="upload-box" onclick="document.getElementById('taxReturn2023').click()">
+                <p>Income tax return 2023</p>
+                <small>Return filed for 2023 (PDF/Image).</small>
+                <div class="file-name" id="taxReturn2023Name"></div>
+                <input type="file" id="taxReturn2023" accept="image/*,.pdf" onchange="handleFileSelect(this, 'taxReturn2023Name')" />
+              </div>
+            </div>
+
 
             <div class="upload-row">
               <div class="upload-box" onclick="document.getElementById('commercialReg').click()">
@@ -2696,7 +2744,12 @@
   }
 
   // Handle single file selection
-  function handleFileSelect(input, nameElementId) {
+  function handleProductToggle(box) {
+      var wrap = box.closest('.prod-chk');
+      if (wrap) wrap.classList.toggle('checked', box.checked);
+    }
+
+    function handleFileSelect(input, nameElementId) {
     var file = input.files[0];
     var nameElement = document.getElementById(nameElementId);
     var uploadBox = input.closest('.upload-box');
@@ -2777,6 +2830,11 @@
       formData.append('requested_installments', document.getElementById('requestedInstallments').value || '');
       formData.append('declared_monthly_inflows', document.getElementById('monthlyInflows').value || '');
 
+      var productCategories = Array.prototype.slice
+        .call(document.querySelectorAll('input[name="productCategories"]:checked'))
+        .map(function (c) { return c.value; });
+      formData.append('product_categories', productCategories.join('; '));
+
       bankStatementFiles.forEach(function(file) {
         formData.append('bankStatements', file);
       });
@@ -2787,11 +2845,26 @@
       if (uploadedFiles['taxCard']) {
         formData.append('tax_card', uploadedFiles['taxCard']);
       }
-      if (uploadedFiles['balanceSheet']) {
-        formData.append('balance_sheet', uploadedFiles['balanceSheet']);
+      if (uploadedFiles['balanceSheet2025']) {
+        formData.append('balance_sheet_2025', uploadedFiles['balanceSheet2025']);
+        formData.append('balance_sheet', uploadedFiles['balanceSheet2025']);
       }
-      if (uploadedFiles['nationalId']) {
-        formData.append('national_id', uploadedFiles['nationalId']);
+      if (uploadedFiles['taxReturn2025']) {
+        formData.append('tax_return_2025', uploadedFiles['taxReturn2025']);
+      }
+      if (uploadedFiles['balanceSheet2024']) {
+        formData.append('balance_sheet_2024', uploadedFiles['balanceSheet2024']);
+        formData.append('balance_sheet', uploadedFiles['balanceSheet2024']);
+      }
+      if (uploadedFiles['taxReturn2024']) {
+        formData.append('tax_return_2024', uploadedFiles['taxReturn2024']);
+      }
+      if (uploadedFiles['balanceSheet2023']) {
+        formData.append('balance_sheet_2023', uploadedFiles['balanceSheet2023']);
+        formData.append('balance_sheet', uploadedFiles['balanceSheet2023']);
+      }
+      if (uploadedFiles['taxReturn2023']) {
+        formData.append('tax_return_2023', uploadedFiles['taxReturn2023']);
       }
       if (uploadedFiles['iscore']) {
         formData.append('iscore', uploadedFiles['iscore']);
