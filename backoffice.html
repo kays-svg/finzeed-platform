@@ -824,6 +824,13 @@
 <script>
 // ===== CONFIG =====
 var API_URL = 'https://finzeed-functions-v2-dea4bncbfhhbecb2.uaenorth-01.azurewebsites.net/api/finzeed_ai_functions';
+// Warm up the Azure Function and its database connection on page load, so the
+// visitor absorbs the cold start while reading rather than on submit.
+fetch(API_URL, {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: '{"action":"ping"}'
+}).catch(function() {});
 var boToken = localStorage.getItem('bo_token');
 var boUser = JSON.parse(localStorage.getItem('bo_user') || 'null');
 var currentAppsPage = 1;

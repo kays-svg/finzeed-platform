@@ -2,6 +2,7 @@ import azure.functions as func
 import logging
 import json
 import os
+import time
 import pyodbc
 from datetime import datetime, timedelta, timezone
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
@@ -73,6 +74,39 @@ def get_db_connection():
             if attempt < 4:
                 time.sleep(5 * (attempt + 1))  # 5, 10, 15, 20s
     raise last_err
+
+
+# ========== WARM-UP ==========
+# A page load on either portal pings this function so the Python worker is
+# already started by the time the visitor submits anything. The ping also opens
+# one database connection, because that is a separate ~7s cost on a fresh
+# instance. Rate-limited per instance: the ping is public, and the database is
+# a 5 DTU Basic tier, so one connection per visitor is not acceptable.
+_last_warm_db = 0.0
+_WARM_DB_INTERVAL = 600  # seconds
+
+
+def warm_up_db():
+    """Open one connection so the first real request skips the cold start.
+
+    Returns 'warm', 'skipped' or 'unavailable' for diagnostics only; a failure
+    here is never surfaced to the caller.
+    """
+    global _last_warm_db
+    now = time.time()
+    if now - _last_warm_db < _WARM_DB_INTERVAL:
+        return 'skipped'
+    _last_warm_db = now
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        return 'warm'
+    except Exception as e:
+        logging.warning(f"Warm-up DB touch failed: {e}")
+        return 'unavailable'
 
 
 # ========== DB KEEP-ALIVE TIMER ==========
@@ -1701,7 +1735,7 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
             # Check for auth actions
             action = req_body.get('action')
             if action == 'ping':
-                return make_response({"ok": True})
+                return make_response({"ok": True, "db": warm_up_db()})
             if action == 'admin_reset_password':
                 return handle_admin_reset_password(req_body)
             if action == 'send_marketing_drafts':
