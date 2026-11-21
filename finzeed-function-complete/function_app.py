@@ -117,6 +117,13 @@ def db_keepalive(timer: func.TimerRequest) -> None:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
+        # Keep the login throttle table from growing without bound.
+        cursor.execute("""
+            IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'login_attempts')
+                DELETE FROM login_attempts
+                WHERE attempted_at < DATEADD(day, -1, SYSUTCDATETIME())
+        """)
+        conn.commit()
         cursor.close()
         conn.close()
         logging.info("DB keep-alive ping successful")
@@ -148,6 +155,7 @@ def create_jwt_token(user_id, email):
     payload = {
         'user_id': user_id,
         'email': email,
+        'user_type': 'customer',
         'exp': datetime.now(timezone.utc) + timedelta(days=7),
         'iat': datetime.now(timezone.utc)
     }
@@ -165,7 +173,15 @@ def verify_jwt_token(req):
         secret = os.environ.get('JWT_SECRET')
         if not secret:
             return None
-        return jwt.decode(token, secret, algorithms=['HS256'])
+        payload = jwt.decode(token, secret, algorithms=['HS256'])
+        # Backoffice tokens are signed with the same secret, so they decode
+        # cleanly here. Reject them: backoffice_users.id and users.id are
+        # separate ID spaces, so accepting one would read an unrelated
+        # customer's data and log the action as that customer.
+        # None is allowed for customer tokens issued before this claim existed.
+        if payload.get('user_type') not in (None, 'customer'):
+            return None
+        return payload
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return None
 
@@ -177,6 +193,99 @@ def make_response(data, status_code=200):
         mimetype="application/json",
         headers={'Access-Control-Allow-Origin': '*'}
     )
+
+# ========== LOGIN THROTTLING ==========
+# Both login endpoints are anonymous and were previously unlimited, so a
+# password could be guessed as fast as the function would answer.
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_WINDOW_MINUTES = 15
+
+_login_attempts_ready = False
+
+
+def client_ip(req):
+    """Best-effort client address. Azure puts it in X-Forwarded-For as ip:port."""
+    try:
+        xff = req.headers.get('X-Forwarded-For', '') or ''
+    except Exception:
+        return None
+    first = xff.split(',')[0].strip()
+    if not first:
+        return None
+    if first.count(':') == 1:  # ipv4:port — an IPv6 address has several colons
+        first = first.split(':')[0]
+    return first[:45] or None
+
+
+def _ensure_login_attempts(cursor):
+    global _login_attempts_ready
+    if _login_attempts_ready:
+        return
+    cursor.execute("""
+        IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'login_attempts')
+        BEGIN
+            CREATE TABLE login_attempts (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                email NVARCHAR(256) NULL,
+                ip_address NVARCHAR(45) NULL,
+                scope NVARCHAR(20) NOT NULL,
+                attempted_at DATETIME2 NOT NULL
+                    CONSTRAINT DF_login_attempts_at DEFAULT SYSUTCDATETIME()
+            );
+            CREATE INDEX IX_login_attempts_lookup
+                ON login_attempts (scope, attempted_at) INCLUDE (email, ip_address);
+        END
+    """)
+    cursor.commit()
+    _login_attempts_ready = True
+
+
+def login_is_locked(cursor, email, ip, scope):
+    """True when this email or address has too many recent failures.
+
+    Fails open: a throttle-table problem must not lock every user out.
+    """
+    try:
+        _ensure_login_attempts(cursor)
+        cursor.execute("""
+            SELECT COUNT(*) FROM login_attempts
+            WHERE scope = ?
+              AND attempted_at > DATEADD(minute, ?, SYSUTCDATETIME())
+              AND (email = ? OR (ip_address IS NOT NULL AND ip_address = ?))
+        """, (scope, -LOGIN_WINDOW_MINUTES, email, ip))
+        return (cursor.fetchone()[0] or 0) >= LOGIN_MAX_ATTEMPTS
+    except Exception as e:
+        logging.warning(f"Login throttle check failed, allowing attempt: {e}")
+        return False
+
+
+def record_login_failure(cursor, email, ip, scope):
+    try:
+        _ensure_login_attempts(cursor)
+        cursor.execute(
+            "INSERT INTO login_attempts (email, ip_address, scope) VALUES (?, ?, ?)",
+            (email, ip, scope))
+        cursor.commit()
+    except Exception as e:
+        logging.warning(f"Could not record login failure: {e}")
+
+
+def clear_login_failures(cursor, email, scope):
+    try:
+        _ensure_login_attempts(cursor)
+        cursor.execute(
+            "DELETE FROM login_attempts WHERE scope = ? AND email = ?", (scope, email))
+        cursor.commit()
+    except Exception as e:
+        logging.warning(f"Could not clear login failures: {e}")
+
+
+def login_locked_response():
+    return make_response({
+        "error": f"Too many sign-in attempts. Please wait {LOGIN_WINDOW_MINUTES} "
+                 f"minutes and try again."
+    }, 429)
+
 
 def ensure_auth_columns(cursor):
     """Add password and verification columns to users table if they don't exist"""
@@ -442,7 +551,7 @@ def handle_register(req_body):
         logging.error(traceback.format_exc())
         return make_response({"error": "Registration failed. Please try again."}, 500)
 
-def handle_login(req_body):
+def handle_login(req, req_body):
     """Handle user login — blocks unverified users"""
     email = req_body.get('email', '').strip().lower()
     password = req_body.get('password', '')
@@ -450,9 +559,16 @@ def handle_login(req_body):
     if not email or not password:
         return make_response({"error": "Email and password are required"}, 400)
 
+    ip = client_ip(req)
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        if login_is_locked(cursor, email, ip, 'customer'):
+            cursor.close()
+            conn.close()
+            return login_locked_response()
 
         cursor.execute("""
             SELECT id, email, password_hash, password_salt, firstname, lastname, company_name, mobile,
@@ -462,6 +578,7 @@ def handle_login(req_body):
         row = cursor.fetchone()
 
         if not row or not row[2]:  # no user or no password set
+            record_login_failure(cursor, email, ip, 'customer')
             cursor.close()
             conn.close()
             return make_response({"error": "Invalid email or password"}, 401)
@@ -469,10 +586,13 @@ def handle_login(req_body):
         user_id, user_email, stored_hash, stored_salt = row[0], row[1], row[2], row[3]
         check_hash, _ = hash_password(password, stored_salt)
 
-        if check_hash != stored_hash:
+        if not hmac.compare_digest(str(check_hash), str(stored_hash)):
+            record_login_failure(cursor, email, ip, 'customer')
             cursor.close()
             conn.close()
             return make_response({"error": "Invalid email or password"}, 401)
+
+        clear_login_failures(cursor, email, 'customer')
 
         # Check email verification
         email_verified = row[8]
@@ -752,7 +872,7 @@ def verify_backoffice_token(req):
         return None
 
 
-def handle_backoffice_login(req_body):
+def handle_backoffice_login(req, req_body):
     """Handle backoffice user login"""
     email = req_body.get('email', '').strip().lower()
     password = req_body.get('password', '')
@@ -760,10 +880,17 @@ def handle_backoffice_login(req_body):
     if not email or not password:
         return make_response({"error": "Email and password are required"}, 400)
 
+    ip = client_ip(req)
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         ensure_new_tables(cursor)
+
+        if login_is_locked(cursor, email, ip, 'backoffice'):
+            cursor.close()
+            conn.close()
+            return login_locked_response()
 
         cursor.execute("""
             SELECT id, email, password_hash, password_salt, fullname, role, is_active
@@ -772,6 +899,7 @@ def handle_backoffice_login(req_body):
         row = cursor.fetchone()
 
         if not row or not row[2]:
+            record_login_failure(cursor, email, ip, 'backoffice')
             cursor.close()
             conn.close()
             return make_response({"error": "Invalid email or password"}, 401)
@@ -784,10 +912,13 @@ def handle_backoffice_login(req_body):
         stored_hash, stored_salt = row[2], row[3]
         check_hash, _ = hash_password(password, stored_salt)
 
-        if check_hash != stored_hash:
+        if not hmac.compare_digest(str(check_hash), str(stored_hash)):
+            record_login_failure(cursor, email, ip, 'backoffice')
             cursor.close()
             conn.close()
             return make_response({"error": "Invalid email or password"}, 401)
+
+        clear_login_failures(cursor, email, 'backoffice')
 
         # Update last login
         cursor.execute("UPDATE backoffice_users SET last_login = GETDATE() WHERE id = ?", (row[0],))
@@ -827,12 +958,24 @@ def handle_backoffice_login(req_body):
 
 
 def handle_seed_admin(req_body):
-    """One-time endpoint to create the first backoffice admin user.
-    Protected by a setup_key that must match ANTHROPIC_API_KEY (or a dedicated SETUP_KEY)."""
-    setup_key = req_body.get('setup_key', '')
-    expected_key = os.environ.get('SETUP_KEY') or os.environ.get('ANTHROPIC_API_KEY', '')
+    """Create a backoffice user. Gated on a dedicated SETUP_KEY.
 
-    if not setup_key or setup_key != expected_key:
+    This is the only path that creates backoffice accounts, so it stays
+    available — but it no longer falls back to ANTHROPIC_API_KEY. That key
+    bills an external account and is handled as a spending credential, not an
+    authentication one; anyone holding it could mint an admin with access to
+    every customer's financial documents.
+    """
+    setup_key = req_body.get('setup_key', '')
+    expected_key = os.environ.get('SETUP_KEY', '')
+
+    if not expected_key:
+        # Behave as if the route does not exist rather than falling back.
+        logging.warning("seed_admin called but SETUP_KEY is not configured")
+        return make_response({"error": "Not found"}, 404)
+
+    if not setup_key or not hmac.compare_digest(str(setup_key), expected_key):
+        logging.warning("seed_admin called with an invalid setup key")
         return make_response({"error": "Invalid setup key"}, 403)
 
     email = req_body.get('email', '').strip().lower()
@@ -960,8 +1103,17 @@ def handle_backoffice_applications(req, req_body):
 
         status_filter = req_body.get('status_filter')
         search = req_body.get('search', '').strip()
-        page = int(req_body.get('page', 1))
-        per_page = int(req_body.get('per_page', 20))
+        # Clamp paging. per_page was unbounded, so a single request could pull
+        # the entire applications table, and a negative page gave a negative
+        # OFFSET and a SQL error.
+        try:
+            page = max(1, int(req_body.get('page', 1)))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            per_page = min(100, max(1, int(req_body.get('per_page', 20))))
+        except (TypeError, ValueError):
+            per_page = 20
         offset = (page - 1) * per_page
 
         where_clauses = []
@@ -1743,7 +1895,7 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
             if action == 'register':
                 return handle_register(req_body)
             if action == 'login':
-                return handle_login(req_body)
+                return handle_login(req, req_body)
             if action == 'profile':
                 return handle_profile(req, req_body)
             if action == 'update_profile':
@@ -1755,7 +1907,7 @@ def finzeed_ai_functions(req: func.HttpRequest) -> func.HttpResponse:
 
             # Backoffice actions
             if action == 'backoffice_login':
-                return handle_backoffice_login(req_body)
+                return handle_backoffice_login(req, req_body)
             if action == 'seed_admin':
                 return handle_seed_admin(req_body)
             if action == 'backoffice_applications':
