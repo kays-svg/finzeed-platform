@@ -1,13 +1,31 @@
-azure-functions
-pyodbc
-azure-storage-blob
-azure-ai-formrecognizer
-azure-core
-openai
-python-dateutil
-pdfplumber
-PyMuPDF
-requests
-PyJWT
-sendgrid
-anthropic
+# Pinned deliberately. These were floating, so every deploy re-resolved them and
+# a remote build would have picked up major-version jumps on its own: anthropic
+# 0.97 -> 2.x, openai 2.24 -> 3.x, azure-functions 1.24 -> 2.x and
+# python-dateutil 2.9 -> 4.x were all waiting on the next publish. Versions here
+# are the ones this code was written and tested against.
+#
+# Bump one at a time and exercise a real credit application afterwards — the AI
+# paths fail by degrading quietly, not by erroring.
+
+azure-functions==1.24.0
+azure-core==1.38.2
+azure-storage-blob==12.28.0
+azure-ai-formrecognizer==3.3.3
+anthropic==0.97.0
+requests==2.32.5
+pyodbc==5.3.0
+PyJWT==2.12.1
+sendgrid==6.12.5
+
+# Needs a manylinux_2_28 wheel, which the remote build provides. Also emits a
+# FutureWarning: the `fitz` module name is deprecated in favour of `pymupdf`.
+# When it is removed, the guarded `import fitz` in function_app.py silently sets
+# fitz = None and bank statement analysis drops to the legacy extractor with
+# only a log line. Migrate the import before unpinning.
+PyMuPDF==1.27.2.3
+
+# Only used by finzeed_ai/__init__.py, the v1 implementation that is shipped but
+# not registered by the host. Kept so that file still imports if it is revived.
+openai==2.24.0
+
+# Dropped: python-dateutil and pdfplumber. Nothing in the repo imports either.
