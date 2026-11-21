@@ -132,7 +132,14 @@ def db_keepalive(timer: func.TimerRequest) -> None:
 
 # ========== AUTH UTILITIES ==========
 
-def hash_password(password, salt=None):
+# Iteration count for new hashes. OWASP guidance for PBKDF2-HMAC-SHA256.
+PBKDF2_ITERATIONS = 600000
+# What hashes stored before password_iterations existed were made with. A NULL
+# password_iterations means a row from that era, not an unknown one.
+PBKDF2_LEGACY_ITERATIONS = 100000
+
+
+def hash_password(password, salt=None, iterations=PBKDF2_ITERATIONS):
     """Hash password with PBKDF2-SHA256 and random salt"""
     if salt is None:
         salt = secrets.token_hex(32)
@@ -140,9 +147,46 @@ def hash_password(password, salt=None):
         'sha256',
         password.encode('utf-8'),
         salt.encode('utf-8'),
-        100000
+        iterations
     ).hex()
     return pw_hash, salt
+
+
+def check_password(password, stored_hash, stored_salt, stored_iterations):
+    """Constant-time check that tolerates hashes made with fewer iterations.
+
+    Returns (ok, needs_upgrade). Raising the iteration count would otherwise
+    invalidate every existing password, so each row is verified at the count it
+    was written with and re-hashed on the next successful sign-in.
+    """
+    try:
+        iterations = int(stored_iterations)
+    except (TypeError, ValueError):
+        iterations = PBKDF2_LEGACY_ITERATIONS
+    if iterations < 1:
+        iterations = PBKDF2_LEGACY_ITERATIONS
+    check_hash, _ = hash_password(password, stored_salt, iterations)
+    ok = hmac.compare_digest(str(check_hash), str(stored_hash))
+    return ok, (ok and iterations < PBKDF2_ITERATIONS)
+
+
+def upgrade_password_hash(cursor, conn, table, user_id, password):
+    """Re-hash a password at the current iteration count.
+
+    Best effort: a failure here must not stop the user signing in.
+    """
+    if table not in ('users', 'backoffice_users'):
+        return  # table is whitelisted here, never taken from a request
+    try:
+        new_hash, new_salt = hash_password(password)
+        cursor.execute(
+            f"UPDATE {table} SET password_hash = ?, password_salt = ?, "
+            f"password_iterations = ? WHERE id = ?",
+            (new_hash, new_salt, PBKDF2_ITERATIONS, user_id))
+        conn.commit()
+        logging.info(f"Re-hashed {table} id {user_id} at {PBKDF2_ITERATIONS} iterations")
+    except Exception as e:
+        logging.warning(f"Could not re-hash {table} id {user_id}: {e}")
 
 def create_jwt_token(user_id, email):
     """Create a JWT token with 7-day expiry"""
@@ -306,6 +350,13 @@ def ensure_auth_columns(cursor):
             BEGIN
                 ALTER TABLE users ADD email_verified BIT DEFAULT 0;
                 ALTER TABLE users ADD verification_token NVARCHAR(128) NULL;
+            END;
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'password_iterations'
+            )
+            BEGIN
+                ALTER TABLE users ADD password_iterations INT NULL;
             END
         """)
         cursor.commit()
@@ -450,8 +501,9 @@ def handle_admin_reset_password(req_body):
         pw_hash, pw_salt = hash_password(new_password)
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE users SET password_hash = ?, password_salt = ? WHERE email = ?",
-                       (pw_hash, pw_salt, email))
+        cursor.execute("UPDATE users SET password_hash = ?, password_salt = ?, "
+                       "password_iterations = ? WHERE email = ?",
+                       (pw_hash, pw_salt, PBKDF2_ITERATIONS, email))
         if cursor.rowcount == 0:
             conn.close()
             return make_response({"error": "User not found"}, 404)
@@ -504,17 +556,20 @@ def handle_register(req_body):
             # Upgrade anonymous user
             user_id = existing[0]
             cursor.execute("""
-                UPDATE users SET password_hash = ?, password_salt = ?,
+                UPDATE users SET password_hash = ?, password_salt = ?, password_iterations = ?,
                     firstname = ?, lastname = ?, company_name = ?, mobile = ?,
                     email_verified = 0, verification_token = ?, updated_at = GETDATE()
                 WHERE id = ?
-            """, (pw_hash, pw_salt, firstname, lastname, company, mobile, verification_token, user_id))
+            """, (pw_hash, pw_salt, PBKDF2_ITERATIONS, firstname, lastname, company, mobile,
+                  verification_token, user_id))
         else:
             cursor.execute("""
-                INSERT INTO users (email, password_hash, password_salt, firstname, lastname, company_name, mobile,
+                INSERT INTO users (email, password_hash, password_salt, password_iterations,
+                    firstname, lastname, company_name, mobile,
                     email_verified, verification_token)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
-            """, (email, pw_hash, pw_salt, firstname, lastname, company, mobile, verification_token))
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+            """, (email, pw_hash, pw_salt, PBKDF2_ITERATIONS, firstname, lastname, company,
+                  mobile, verification_token))
             cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
             user_id = cursor.fetchone()[0]
 
@@ -572,7 +627,7 @@ def handle_login(req, req_body):
 
         cursor.execute("""
             SELECT id, email, password_hash, password_salt, firstname, lastname, company_name, mobile,
-                   email_verified, verification_token
+                   email_verified, verification_token, password_iterations
             FROM users WHERE email = ?
         """, (email,))
         row = cursor.fetchone()
@@ -584,15 +639,17 @@ def handle_login(req, req_body):
             return make_response({"error": "Invalid email or password"}, 401)
 
         user_id, user_email, stored_hash, stored_salt = row[0], row[1], row[2], row[3]
-        check_hash, _ = hash_password(password, stored_salt)
+        ok, needs_upgrade = check_password(password, stored_hash, stored_salt, row[10])
 
-        if not hmac.compare_digest(str(check_hash), str(stored_hash)):
+        if not ok:
             record_login_failure(cursor, email, ip, 'customer')
             cursor.close()
             conn.close()
             return make_response({"error": "Invalid email or password"}, 401)
 
         clear_login_failures(cursor, email, 'customer')
+        if needs_upgrade:
+            upgrade_password_hash(cursor, conn, 'users', user_id, password)
 
         # Check email verification
         email_verified = row[8]
@@ -893,7 +950,8 @@ def handle_backoffice_login(req, req_body):
             return login_locked_response()
 
         cursor.execute("""
-            SELECT id, email, password_hash, password_salt, fullname, role, is_active
+            SELECT id, email, password_hash, password_salt, fullname, role, is_active,
+                   password_iterations
             FROM backoffice_users WHERE email = ?
         """, (email,))
         row = cursor.fetchone()
@@ -910,15 +968,17 @@ def handle_backoffice_login(req, req_body):
             return make_response({"error": "Account deactivated"}, 403)
 
         stored_hash, stored_salt = row[2], row[3]
-        check_hash, _ = hash_password(password, stored_salt)
+        ok, needs_upgrade = check_password(password, stored_hash, stored_salt, row[7])
 
-        if not hmac.compare_digest(str(check_hash), str(stored_hash)):
+        if not ok:
             record_login_failure(cursor, email, ip, 'backoffice')
             cursor.close()
             conn.close()
             return make_response({"error": "Invalid email or password"}, 401)
 
         clear_login_failures(cursor, email, 'backoffice')
+        if needs_upgrade:
+            upgrade_password_hash(cursor, conn, 'backoffice_users', row[0], password)
 
         # Update last login
         cursor.execute("UPDATE backoffice_users SET last_login = GETDATE() WHERE id = ?", (row[0],))
@@ -999,9 +1059,10 @@ def handle_seed_admin(req_body):
 
         pw_hash, pw_salt = hash_password(password)
         cursor.execute("""
-            INSERT INTO backoffice_users (email, password_hash, password_salt, fullname, role, is_active)
-            VALUES (?, ?, ?, ?, 'admin', 1)
-        """, (email, pw_hash, pw_salt, fullname or 'Admin'))
+            INSERT INTO backoffice_users (email, password_hash, password_salt, password_iterations,
+                fullname, role, is_active)
+            VALUES (?, ?, ?, ?, ?, 'admin', 1)
+        """, (email, pw_hash, pw_salt, PBKDF2_ITERATIONS, fullname or 'Admin'))
         conn.commit()
         cursor.close()
         conn.close()
@@ -3195,6 +3256,7 @@ def ensure_new_tables(cursor):
             email NVARCHAR(255) UNIQUE NOT NULL,
             password_hash NVARCHAR(256),
             password_salt NVARCHAR(64),
+            password_iterations INT NULL,
             fullname NVARCHAR(255),
             role NVARCHAR(50) DEFAULT 'analyst',
             is_active BIT DEFAULT 1,
@@ -3291,6 +3353,14 @@ def ensure_new_tables(cursor):
                 ALTER TABLE credit_reports ADD identity_verification NVARCHAR(MAX) NULL;
             IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='credit_reports' AND COLUMN_NAME='registration_analysis')
                 ALTER TABLE credit_reports ADD registration_analysis NVARCHAR(MAX) NULL;
+        END""",
+
+        # Same reasoning as credit_reports above: a backoffice_users table that
+        # predates password_iterations would never gain it.
+        """IF EXISTS (SELECT * FROM sysobjects WHERE name='backoffice_users' AND xtype='U')
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='backoffice_users' AND COLUMN_NAME='password_iterations')
+                ALTER TABLE backoffice_users ADD password_iterations INT NULL;
         END""",
 
         """IF EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
