@@ -501,6 +501,7 @@ def handle_admin_reset_password(req_body):
         pw_hash, pw_salt = hash_password(new_password)
         conn = get_db_connection()
         cursor = conn.cursor()
+        ensure_auth_columns(cursor)  # writes password_iterations
         cursor.execute("UPDATE users SET password_hash = ?, password_salt = ?, "
                        "password_iterations = ? WHERE email = ?",
                        (pw_hash, pw_salt, PBKDF2_ITERATIONS, email))
@@ -619,6 +620,10 @@ def handle_login(req, req_body):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        # This path reads password_iterations, so it has to guarantee the column
+        # itself. Registration used to be the only caller, which left every
+        # login failing on a database where nobody had registered yet.
+        ensure_auth_columns(cursor)
 
         if login_is_locked(cursor, email, ip, 'customer'):
             cursor.close()
